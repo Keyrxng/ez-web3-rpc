@@ -1,4 +1,4 @@
-import fs from "fs/promises";
+import fs, { writeFile } from "fs/promises";
 import path from "path";
 import { pathToFileURL } from "url";
 
@@ -33,8 +33,27 @@ function removeEndingSlash(url: string) {
 }
 
 function normalizeRpcEntry(rpc: any) {
-  if (typeof rpc === "string") return { url: removeEndingSlash(rpc) };
-  return { ...rpc, url: removeEndingSlash(rpc.url) };
+  if (typeof rpc === "string") {
+    const s = rpc.trim();
+    if (isCommentedString(s)) return null;
+    if (containsApiKey(s)) return null;
+    return { url: removeEndingSlash(s) };
+  }
+  const url = rpc?.url;
+  if (!url || containsApiKey(String(url))) return null;
+  return { ...rpc, url: removeEndingSlash(String(rpc.url)) };
+}
+
+function isCommentedString(value: string) {
+  if (typeof value !== "string") return false;
+  const t = value.trim();
+  return t.startsWith("//") || t.startsWith("/*") || t.startsWith("#");
+}
+
+function containsApiKey(url: string) {
+  if (typeof url !== "string") return false;
+  // common patterns: ${INFURA_API_KEY}, ${SOMETHING_API_KEY}, query params like ?api_key= or &key=
+  return /\$\{[A-Z0-9_]+_?API_KEY\}|\bapi[_-]?key\b|\bapiKey\b|[?&](api_key|apiKey|key|auth)=/i.test(url);
 }
 
 
@@ -61,48 +80,49 @@ async function loadOverrides() {
   return overrides;
 }
 
+/**
+ * Imports fail due to ESM/CJS incompatibility so we
+ * extract the hardcoded data to avoid the merging and dynamic imports.
+ */
+async function getExtraRpcs() {
+  let extraRpcs: Record<number, {rpcs: []}> = {};
+  const text = await fs.readFile(path.join(CONSTANTS_DIR, "extraRpcs.js"), "utf8");
+  // remove the first and last 4 lines (imports, exports)
+  const lines = text.split("\n");
+  const cleaned = lines.slice(4, -4).join("\n").replace("export ", "");
+  /**
+   * It currently looks like:
+   * 
+   * const privacyStatements = {...}
+   *
+   * const extraRpcs = {
+   *  1: {
+   *    url: "https://rpc.1.com",
+   *    description: "RPC for chain 1",
+   *    privacyStatement: privacyStatements.example,
+   *  },
+   * };
+   */
+
+  const newMethodReturningExtraRpcsObj = 
+    `function getExtraRpcs(){
+      ${cleaned}
+      return extraRpcs;
+    }`;
+
+  try {
+    extraRpcs = eval(newMethodReturningExtraRpcsObj + "\n getExtraRpcs();");
+  } catch (err) {
+    console.warn(`warning: failed to evaluate extraRpcs: ${err}`);
+  }
+
+  return extraRpcs;
+}
+
 export async function generateChainData() {
   console.log("prebuild: generating chain list...");
 
-  // import local constants
-  // Try dynamic import, but `extraRpcs.js` imports utils which depends on generated files
-  // so fall back to parsing the exported object from source if import fails as that's all we need.
-  let allExtraRpcs: any = {};
-//   try {
-//     const extraRpcsMod = await dynamicImport(path.join(CONSTANTS_DIR, "extraRpcs.js"));
-//     allExtraRpcs = extraRpcsMod?.extraRpcs ?? extraRpcsMod?.default ?? extraRpcsMod;
-//   } catch (err) {
-//     // fallback: parse the file and extract `export const extraRpcs = { ... }`
-    try {
-      const extraFile = await fs.readFile(path.join(CONSTANTS_DIR, "extraRpcs.js"), "utf8");
-      const m = extraFile.match(/export\s+(?:const|var|let)\s+extraRpcs\s*=\s*/);
-      if (m) {
-        // find start index after the match
-        const start = m.index! + m[0].length;
-        // extract balanced braces object
-        let i = start;
-        // skip whitespace
-        while (i < extraFile.length && /\s/.test(extraFile[i])) i++;
-        if (extraFile[i] === "{") {
-          let depth = 0;
-          let end = i;
-          for (; end < extraFile.length; end++) {
-            const ch = extraFile[end];
-            if (ch === "{") depth++;
-            else if (ch === "}") depth--;
-            if (depth === 0) break;
-          }
-          const objectText = extraFile.slice(i, end + 1);
-          // evaluate in a safe function scope
-          // eslint-disable-next-line no-new-func
-          allExtraRpcs = Function(`"use strict"; return (${objectText});`)();
-        }
-      }
-    } catch (err2) {
-      console.warn("warning: failed to load extraRpcs fallback:", err2);
-    }
-//   }
-
+  const extraRpcs = await getExtraRpcs();
   const llamaMod = await dynamicImport(path.join(CONSTANTS_DIR, "llamaNodesRpcs.js"));
   const chainIdsMod = await dynamicImport(path.join(CONSTANTS_DIR, "chainIds.js"));
 
@@ -133,19 +153,20 @@ export async function generateChainData() {
 
   // populate RPCs, tvl, chainSlug, etc.
   const populated = merged.map((chain: any) => {
-    const rpcsFromExtra = (allExtraRpcs?.[chain.chainId]?.rpcs ?? []).map(normalizeRpcEntry);
+    const rpcsFromExtra = (extraRpcs?.[chain.chainId]?.rpcs ?? []).map(normalizeRpcEntry).filter(Boolean);
 
     let rpcs = [...rpcsFromExtra];
 
     for (const rpcUrl of chain.rpc ?? []) {
       const rpc = normalizeRpcEntry(rpcUrl);
+      if (!rpc || (rpc && !("url" in rpc))) continue;
       if (rpc.url.includes("${INFURA_API_KEY}")) continue;
       if (!rpcs.find((r) => r.url === rpc.url)) rpcs.push(rpc);
     }
 
     // also prefer llamaNodes RPCs if present (merge at front)
     if (llamaNodes?.[chain.chainId]?.rpcs) {
-      const l = llamaNodes[chain.chainId].rpcs.map(normalizeRpcEntry);
+      const l = llamaNodes[chain.chainId].rpcs.map(normalizeRpcEntry).filter(Boolean);
       // put them first, but dedupe
       for (const entry of l) {
         if (!rpcs.find((r) => r.url === entry.url)) rpcs.unshift(entry);
@@ -171,5 +192,7 @@ export async function generateChainData() {
 
   // write out
   await fs.writeFile(OUT_FILE, JSON.stringify(populated, null, 2), "utf8");
-  console.log(`prebuild: wrote ${OUT_FILE} with ${populated.length} chains`);
+  console.log(`prebuild: wrote ${OUT_FILE}`);
+  const providerCount = populated.flatMap((c) => c.rpc ?? []).length;
+  console.log(`prebuild: found ${providerCount} RPC providers across ${populated.length} chains`);
 }
