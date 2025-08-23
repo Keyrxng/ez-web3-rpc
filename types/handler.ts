@@ -2,6 +2,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import { networkCurrencies, networkExplorers, networkRpcs } from "./constants";
 import { CHAINS_IDS, EXTRA_RPCS } from "../dynamic";
 import { RequestPayload } from "./rpc-service";
+import { LogLevel } from "./logs";
 
 export type BlockExplorer = {
   name: string;
@@ -40,7 +41,6 @@ export type HandlerInterface = {
   consensusCall<TMethodReturnData>(requestPayload: RequestPayload, quorumThreshold: `0.${number}`): Promise<TMethodReturnData>;
 };
 
-
 /**
  * Configuration options for the RPC-Handler.
  *
@@ -55,7 +55,7 @@ export type HandlerInterface = {
 export type HandlerConstructorConfig = {
   networkId: NetworkId;
   settings?: {
-    logLevel: "info" | "debug" | "warn" | "error";
+    logLevel?: LogLevel;
     /**
      * The data tracking status of the RPC provider, which can be:
      * - `yes` - Allow all providers regards of the data they gather
@@ -88,14 +88,14 @@ export type HandlerConstructorConfig = {
      * E.G. `http://localhost:8545`
      * E.G. `https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID`
      */
-    networkRpcs: Rpc[] | null;
+    networkRpcs?: Rpc[];
     /**
      * BROWSER ONLY
      *
      * Whether to store latency and provider info in LocalStorage
      * or in-memory only.
      */
-    autoStorage: boolean | null;
+    autoStorage?: boolean;
   };
   /**
    * Settings from proxying Ethereum JSON-RPC calls.

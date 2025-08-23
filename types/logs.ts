@@ -215,3 +215,5 @@ export const LOG_LEVEL = {
   DEBUG: "debug",
   NONE: "none",
 } as const;
+
+export type LogLevel = typeof LOG_LEVEL[keyof typeof LOG_LEVEL];
