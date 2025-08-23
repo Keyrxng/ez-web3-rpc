@@ -12,10 +12,15 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Find first healthy RPC (https only) by running health checks sequentially after parallel pre-flight.
+ * Find first healthy RPC by running health checks sequentially after parallel pre-flight.
+ *
+ * If no healthy RPC is found, returns null.
+ *
+ * Note: HTTP RPCs are only checked if the `http` option is enabled. (i.e localhost)
  */
-export async function getFirstHealthy(rpcs: Rpc[], opts: { timeout: number }): Promise<string | null> {
-  const httpsRpcs = rpcs.filter((r: any) => (r.url || r).includes('https'));
+export async function getFirstHealthy(rpcs: Rpc[], opts: { timeout: number, http?: boolean }): Promise<string | null> {
+  const httpsRpcs = rpcs.filter((r: any) => (r.url || r).startsWith('https://') || (opts.http && (r.url || r).startsWith('http://')));
+  if (!httpsRpcs.length) return null;
   const shuffled = shuffle(httpsRpcs);
   for (const rpc of shuffled) {
     const url = (rpc as any).url || rpc;

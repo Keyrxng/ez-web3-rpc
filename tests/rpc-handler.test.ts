@@ -1,183 +1,56 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { networkRpcs } from "../types/constants";
-import { RPCHandler } from "../types/rpc-handler";
-import { getRpcUrls, NetworkId, NetworkName, Rpc, Tracking } from "../types/handler";
-import { testConfig } from "./constants";
+import { RPCHandler } from '../src';
+import type { RpcHandlerOptions } from '../src/rpc-handler';
 
-const rpcList: { url: string; tracking?: Tracking }[] = [
-  { url: "http://127.0.0.1:85451", tracking: "none" },
-  { url: "http://127.0.0.1:85454", tracking: "none" },
-  { url: "http://127.0.0.1:85453", tracking: "none" },
-  { url: "http://127.0.0.1:854531", tracking: "none" },
-  { url: "http://127.0.0.1:854532", tracking: "none" },
-  { url: "http://127.0.0.1:854533", tracking: "none" },
-  { url: "http://127.0.0.1:854535", tracking: "none" },
-  { url: "http://127.0.0.1:854", tracking: "none" },
-  { url: "http://127.0.0.1:85", tracking: "none" },
-  { url: "http://127.0.0.1:81", tracking: "none" },
-  { url: "http://127.0.0.1:8545", tracking: "none" },
-];
+// NOTE: These tests focus on constructor + config normalization + tracking filter logic.
+// Network calls for latency measurement are NOT executed here to keep tests deterministic.
+// Integration/latency tests can be added with mocked axios/fetch if needed.
 
-const rpcHandlerConfig = {
-  ...testConfig,
-  networkRpcs: rpcList,
-  networkName: "anvil" as NetworkName,
-  networkId: "31337" as NetworkId,
-  runtimeRpcs: rpcList.map((rpc) => rpc.url),
-};
+describe('RPCHandler (src)', () => {
+  function makeConfig(partial: Partial<RpcHandlerOptions> = {}): RpcHandlerOptions {
+    return {
+      networkId: '31337',
+      providerLib: 'ethers',
+      strategy: 'fastest',
+      settings: {
+        tracking: partial.settings?.tracking ?? 'none',
+        networkRpcs: partial.settings?.networkRpcs,
+        browserLocalStorage: false,
+        rpcTimeout: 10,
+        cacheRefreshCycles: 2,
+        logLevel: 'none',
+      },
+      proxySettings: { retryCount: 1, retryDelay: 1, rpcCallTimeout: 50 },
+      injectedRpcs: undefined as any, // placeholder (not part of public interface, ignore TS),
+      ...partial,
+    } as any;
+  }
 
-describe("RPCHandler", () => {
-  let provider: JsonRpcProvider;
+  it('constructs and exposes injected RPC list filtered by tracking', () => {
+    const injected = [
+      { url: 'http://localhost:1111', tracking: 'none' as const },
+      { url: 'http://localhost:2222', tracking: 'limited' as const },
+      { url: 'http://localhost:3333', tracking: 'yes' as const },
+    ];
+    const baseNone = new RPCHandler(makeConfig({ settings: { tracking: 'none', networkRpcs: injected } }));
+    const urlsNone = baseNone.rpcs.map(r => r.url);
+    // Should only include tracking==='none' injected + exclude limited/yes
+    expect(urlsNone).toContain('http://localhost:1111');
+    expect(urlsNone).not.toContain('http://localhost:2222');
+    expect(urlsNone).not.toContain('http://localhost:3333');
 
-  afterEach(() => {
-    jest.clearAllMocks();
-    jest.clearAllTimers();
+    const baseLimited = new RPCHandler(makeConfig({ settings: { tracking: 'limited', networkRpcs: injected } }));
+    const urlsLimited = baseLimited.rpcs.map(r => r.url);
+    expect(urlsLimited).toEqual(expect.arrayContaining(['http://localhost:1111','http://localhost:2222']));
+    expect(urlsLimited).not.toContain('http://localhost:3333');
+
+    const baseYes = new RPCHandler(makeConfig({ settings: { tracking: 'yes', networkRpcs: injected } }));
+    const urlsYes = baseYes.rpcs.map(r => r.url);
+    expect(urlsYes).toEqual(expect.arrayContaining(['http://localhost:1111','http://localhost:2222','http://localhost:3333']));
   });
 
-  describe("Initialization", () => {
-    function setup() {
-      return new RPCHandler(rpcHandlerConfig);
-    }
-
-    it("should be instance of RPCHandler", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler).toBeInstanceOf(RPCHandler);
-    });
-
-    it("should initialize with correct networkId", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_networkId"]).toBe(rpcHandlerConfig.networkId);
-    });
-
-    it("should initialize with correct cacheRefreshCycles", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_cacheRefreshCycles"]).toBe(rpcHandlerConfig.cacheRefreshCycles);
-    });
-
-    it("should initialize with correct autoStorage", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_autoStorage"]).toBe(false);
-    });
-
-    it("should initialize with correct runtimeRpcs", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_runtimeRpcs"]).toEqual([
-        "http://127.0.0.1:8545",
-        "http://127.0.0.1:8546",
-        "http://127.0.0.1:85451",
-        "http://127.0.0.1:85454",
-        "http://127.0.0.1:85453",
-        "http://127.0.0.1:854531",
-        "http://127.0.0.1:854532",
-        "http://127.0.0.1:854533",
-        "http://127.0.0.1:854535",
-        "http://127.0.0.1:854",
-        "http://127.0.0.1:85",
-        "http://127.0.0.1:81",
-        "http://127.0.0.1:8545",
-      ]);
-    });
-
-    it("should initialize with correct latencies", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_latencies"]).toEqual({});
-    });
-
-    it("should initialize with correct networkRpcs", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_networkRpcs"]).toEqual([
-        {
-          url: "http://127.0.0.1:8545",
-        },
-        {
-          url: "http://127.0.0.1:8546",
-        },
-      ]);
-    });
-
-    it("should initialize with null provider", () => {
-      const rpcHandler = setup();
-      const provider = rpcHandler["_provider"];
-      expect(provider).toBeNull();
-    });
-
-    it("should initialize with correct rpcTimeout", () => {
-      const rpcHandler = setup();
-      expect(rpcHandler["_rpcTimeout"]).toBe(rpcHandlerConfig.rpcTimeout);
-    });
-  });
-
-  describe("getFastestRpcProvider", () => {
-    it("should return the fastest RPC compared to the latencies", async () => {
-      const module = await import("../types/rpc-handler");
-      const rpcHandler = new module.RPCHandler({
-        ...rpcHandlerConfig,
-        rpcTimeout: 10000,
-      });
-
-      provider = await rpcHandler.getFastestRpcProvider();
-      const fastestRpc = rpcHandler.getProvider();
-      const latencies = rpcHandler.getLatencies();
-      expect(provider._network.chainId).toBe(Number(rpcHandlerConfig.networkId));
-      expect(provider.connection.url).toMatch(/(https|wss|http):\/\//);
-      const latArrLen = Array.from(Object.entries(latencies)).length;
-      const runtime = rpcHandler.getRuntimeRpcs();
-      expect(runtime.length).toBeGreaterThan(0);
-      expect(runtime.length).toBe(latArrLen);
-      expect(runtime.length).toBeLessThanOrEqual(getRpcUrls(networkRpcs[rpcHandlerConfig.networkId].rpcs).length);
-      expect(latArrLen).toBeGreaterThanOrEqual(1);
-
-      if (latArrLen > 1) {
-        const sorted = Object.entries(latencies).sort((a, b) => a[1] - b[1]);
-        const first = sorted[0];
-        const last = sorted[sorted.length - 1];
-        expect(first[1]).toBeLessThanOrEqual(last[1]);
-      }
-      expect(fastestRpc.connection.url).toBe(provider.connection.url);
-    }, 360000);
-  });
-
-  describe("RPC tracking config option", () => {
-    const filterFunctions = {
-      none: function (rpc: Rpc) {
-        return rpc?.tracking && rpc.tracking === "none";
-      },
-      limited: function (rpc: Rpc) {
-        return rpc?.tracking && ["none", "limited"].includes(rpc.tracking);
-      },
-      yes: function (rpc: Rpc) {
-        return true;
-      },
-      undefined: function (rpc: Rpc) {
-        return true;
-      },
-    };
-
-    for (const [trackingOption, filterFunction] of Object.entries(filterFunctions)) {
-      it(`should return correct rpcs with tracking=${trackingOption}`, async () => {
-        const filteredRpcs = rpcList.filter((rpc) => {
-          return filterFunction(rpc);
-        });
-
-        const urls = filteredRpcs.map((rpc) => {
-          if (typeof rpc == "string") return rpc;
-
-          return rpc.url;
-        });
-
-        if (trackingOption == "undefined") {
-          delete rpcHandlerConfig.tracking;
-        } else {
-          rpcHandlerConfig.tracking = trackingOption as Tracking;
-        }
-        const handler = new RPCHandler(rpcHandlerConfig);
-        await handler.testRpcPerformance();
-        const runtime = handler.getRuntimeRpcs();
-        expect(runtime.length).toBeLessThanOrEqual(urls.length);
-
-        // expect runtime to be the subset of urls
-        expect(urls).toEqual(expect.arrayContaining(runtime));
-      }, 10000);
-    }
+  it('initially has no provider and empty latencies', () => {
+    const handler = new RPCHandler(makeConfig());
+    expect(() => handler.getProvider()).toThrow(/Provider not initialized/);
+    expect(handler.getLatencies()).toEqual({});
   });
 });

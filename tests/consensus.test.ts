@@ -1,73 +1,60 @@
-import { HandlerConstructorConfig } from "../types/handler";
-import nock from "nock";
-import { testConfig } from "./constants";
+import { RPCHandler } from '../src';
+import type { JsonRpcRequest } from '../src/calls';
 
-/**
- * I had to separate this into it's own file as `nock` messed
- * up the other tests.
- *
- * I didn't want to test the method like this, but I had to.
- * The consensus function is naturally fragile when it comes
- * to CI.
- */
-const rpcUrls = ["http://127.0.0.1:8545", "http://127.0.0.1:8546", "http://127.0.0.1:8547"];
-const consensusConfig: HandlerConstructorConfig = {
-  ...testConfig,
-  runtimeRpcs: rpcUrls,
-  networkRpcs: rpcUrls.map((url) => ({ url })),
-};
+// Simple fetch mock helper
+function mockFetch(responders: Record<string, any>) {
+  const original = global.fetch;
+  global.fetch = (async (input: any, init?: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    const body = init?.body && JSON.parse(init.body);
+    const key = url + '|' + body.method;
+    const response = responders[key];
+    if (!response) {
+      return new Response(JSON.stringify({ jsonrpc: '2.0', result: null, id: body?.id }), { status: 200 });
+    }
+    return new Response(JSON.stringify(response), { status: 200 });
+  }) as any;
+  return () => { global.fetch = original; };
+}
 
-const testPayload = {
-  jsonrpc: "2.0",
-  method: "eth_getBlockByNumber",
-  params: ["latest", false],
-  id: 1,
-  headers: {
-    "Content-Type": "application/json",
-  },
-};
+describe('Consensus (src)', () => {
+  const rpcUrls = ['http://localhost:7001','http://localhost:7002','http://localhost:7003'];
+  function makeHandler() {
+    return new RPCHandler({
+      networkId: '31337',
+      settings: { tracking: 'none', networkRpcs: rpcUrls.map(url => ({ url })), browserLocalStorage: false, logLevel: 'none', rpcTimeout: 5, cacheRefreshCycles: 1 },
+      proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 20 },
+      strategy: 'fastest'
+    });
+  }
 
-describe("Consensus Call", () => {
-  afterEach(() => {
-    jest.clearAllMocks();
-    jest.clearAllTimers();
+  const req: JsonRpcRequest = { jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 };
+
+  it('reaches basic consensus (all identical)', async () => {
+    const restore = mockFetch({
+      'http://localhost:7001|eth_blockNumber': { jsonrpc: '2.0', result: '0x10', id: 1 },
+      'http://localhost:7002|eth_blockNumber': { jsonrpc: '2.0', result: '0x10', id: 1 },
+      'http://localhost:7003|eth_blockNumber': { jsonrpc: '2.0', result: '0x10', id: 1 },
+    });
+  const handler = makeHandler();
+  // Limit to only mocked URLs to avoid unintended network calls
+  handler.rpcs = rpcUrls.map(url => ({ url, tracking: 'none' } as any));
+    const value = await handler.calls.consensus(req, '0.50');
+    expect(value).toBe('0x10');
+    restore();
   });
 
-  it("Should reach consensus", async () => {
-    const module = await import("../types/rpc-handler");
-    const rpcHandler = new module.RPCHandler(consensusConfig);
-
-    for (const url of rpcUrls) {
-      nock(url)
-        .post("/")
-        .reply(200, {
-          jsonrpc: "2.0",
-          result: { number: "0x1b4", hash: "0x1b4" },
-          id: 1,
-        });
-    }
-
-    const consensus = await rpcHandler.security.consensusCall(testPayload, "0.5");
-    expect(consensus).toBeDefined();
-  }, 15000);
-
-  it("Should fail to reach consensus", async () => {
-    const module = await import("../types/rpc-handler");
-    const rpcHandler = new module.RPCHandler(consensusConfig);
-
-    const responses = [
-      { number: "0x1b4", hash: "0x1b4" },
-      { number: "0x01", hash: "0x01" },
-      { number: "0x", hash: "0x" },
-    ];
-
-    for (const url of rpcUrls) {
-      nock(url).post("/").reply(200, {
-        jsonrpc: "2.0",
-        result: responses.shift(),
-        id: 1,
-      });
-    }
-    await expect(rpcHandler.security.consensusCall(testPayload, "0.5")).rejects.toThrow();
-  }, 15000);
+  it('BFT descent returns majority when lower threshold reached', async () => {
+    const restore = mockFetch({
+      'http://localhost:7001|eth_blockNumber': { jsonrpc: '2.0', result: '0x10', id: 1 },
+      'http://localhost:7002|eth_blockNumber': { jsonrpc: '2.0', result: '0x10', id: 1 },
+      'http://localhost:7003|eth_blockNumber': { jsonrpc: '2.0', result: '0x11', id: 1 },
+    });
+  const handler = makeHandler();
+  handler.rpcs = rpcUrls.map(url => ({ url, tracking: 'none' } as any));
+  // Directly test bftConsensus (internal attempt disallows early abort)
+  const value = await handler.calls.bftConsensus(req, '0.90', '0.50');
+  expect(value).toBe('0x10');
+    restore();
+  });
 });

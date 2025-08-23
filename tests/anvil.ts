@@ -1,5 +1,6 @@
 import { spawnSync } from "child_process";
-import { RPCHandler } from "../types/rpc-handler";
+// Updated to use the new RPCHandler implementation from /src
+import { RPCHandler } from "../src";
 
 class Anvil {
   rpcs: string[] = [];
@@ -7,30 +8,22 @@ class Anvil {
 
   async init() {
     this.rpcHandler = new RPCHandler({
-      autoStorage: false,
-      cacheRefreshCycles: 3,
-      networkId: "100",
-      networkName: "gnosis",
-      rpcTimeout: 1000,
-      runtimeRpcs: null,
-      networkRpcs: null,
+      networkId: "100", // Gnosis
       proxySettings: {
-        logger: null,
-        logTier: "ok",
         retryCount: 3,
         retryDelay: 100,
-        strictLogs: true,
-        moduleName: "TestModule",
+        rpcCallTimeout: 5_000,
       },
+      strategy: "fastest",
     });
-    await this.rpcHandler.testRpcPerformance();
-    const latencies: Record<string, number> = this.rpcHandler.getLatencies();
+    await this.rpcHandler.init();
+
+    const latencies = this.rpcHandler.getLatencies();
     const sorted = Object.entries(latencies).sort(([, a], [, b]) => a - b);
     console.log(
       `Fetched ${sorted.length} RPCs.\nFastest: ${sorted[0][0]} (${sorted[0][1]}ms)\nSlowest: ${sorted[sorted.length - 1][0]} (${sorted[sorted.length - 1][1]}ms)`
     );
-
-    this.rpcs = sorted.map(([rpc]) => rpc.split("__")[1]);
+    this.rpcs = sorted.map(([url]) => url);
   }
 
   async run() {
