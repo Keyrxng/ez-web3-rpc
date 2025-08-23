@@ -1,6 +1,5 @@
 import { appendFile, writeFile } from "fs/promises";
 import { BlockExplorer, NativeToken } from "../types/handler";
-import { generateChainData } from "../lib/chainlist/utils/fetch";
 
 /**
  * This produces dynamic types and constants for:
@@ -13,7 +12,7 @@ import { generateChainData } from "../lib/chainlist/utils/fetch";
  */
 
 export async function createDynamicTypes() {
-  const data = await generateChainData();
+  const data = (await import("./generated-chains.json")).default;
   const idToNetwork: Record<string, string> = {};
   const networkToId: Record<string, number> = {};
   const idToRpc: Record<string, string[]> = {};
@@ -27,17 +26,10 @@ export async function createDynamicTypes() {
     name = name.toLowerCase().replace(/\s/g, "-");
     idToNetwork[chainId] = name;
     networkToId[name] = networkId;
-    idToRpc[chainId] = rpc;
-    idToFaucet[chainId] = faucets;
-
-    if (explorers && explorers.length > 0) {
-      idToExplorers[chainId] = explorers;
-    }
-
-    if (rpc && rpc.length > 0) {
-      extraRpcs[chainId] = rpc;
-    }
-
+    idToRpc[chainId] = rpc?.length > 0 ? rpc : [];
+    idToFaucet[chainId] = faucets?.length > 0 ? faucets : [];
+    idToExplorers[chainId] = explorers?.length > 0 ? explorers : [];
+    extraRpcs[chainId] = rpc?.length > 0 ? rpc : [];
     idToNativeCurrency[chainId] = nativeCurrency;
   }
 

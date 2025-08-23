@@ -2,6 +2,7 @@ import esbuild from "esbuild";
 import path from "path";
 import * as fs from "fs";
 import { createDynamicTypes } from "./dynamic-types";
+import { generateChainData } from "./prebuild-generate-chain-data";
 
 const typescriptEntries = ["index.ts"];
 export const entries = [...typescriptEntries];
@@ -13,6 +14,9 @@ export const esBuildContext: esbuild.BuildOptions = {
 };
 
 async function main() {
+    await generateChainData();
+    await createDynamicTypes();
+
   try {
     await buildForEnvironments();
     await buildIndex();
@@ -75,4 +79,8 @@ function ensureDistDir() {
   }
 }
 
-createDynamicTypes().then(main).catch(console.error);
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
