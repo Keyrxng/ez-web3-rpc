@@ -1,0 +1,54 @@
+name: Run Jest testing suite
+on:
+  push:
+    branches:
+      - development
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+env:
+  NODE_ENV: "test"
+
+jobs:
+  testing:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.10.0"
+      - uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build
+        run: yarn build
+
+      - name: Start Anvil
+        run: yarn test:anvil &
+
+      - name: Wait for Anvil
+        run: |
+          for i in {1..30}
+          do
+            if curl -s http://localhost:8545; then
+              break
+            fi
+            sleep 1
+          done || exit 1
+
+      - name: Jest With Coverage
+        run: yarn test
+
+      - name: Add Jest Report to Summary
+        if: always()
+        run: echo "$(cat test-dashboard.md)" >> $GITHUB_STEP_SUMMARY
