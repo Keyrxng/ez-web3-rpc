@@ -18,7 +18,6 @@ import {
   networkIds,
   networkNames,
   networkRpcs,
-  nftAddress,
   permit2Address,
   getNetworkId,
   getNetworkFaucets,
@@ -34,7 +33,7 @@ import { PrettyLogs } from "./types/logs";
 import { StorageService } from "./types/storage-service";
 import { RPCService } from "./types/rpc-service";
 
-export { LOCAL_HOST, networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, nftAddress, permit2Address };
+export { LOCAL_HOST, networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, permit2Address };
 export { getNetworkId, getNetworkFaucets, getNetworkExplorer, getNetworkName, getNetworkRpcs, getNetworkCurrency, getNetworkData };
 
 export type {

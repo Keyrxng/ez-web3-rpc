@@ -14,16 +14,33 @@ const networkIds: Record<NetworkId, NetworkName> = {
 
 const networkNames = Object.fromEntries(
   Object.entries(networkIds).map(([key, value]) => {
-    return [value, key];
+    return [value, key as NetworkId];
   })
-) as Record<NetworkName, NetworkId>;
-
-Reflect.deleteProperty(networkNames, "geth-testnet"); // 1337
-Reflect.deleteProperty(networkNames, "gochain-testnet"); // 31337
+);
 
 const networkRpcs = Object.fromEntries(
   Object.entries(networkNames).map(([, value]) => {
     const chainRpcs = EXTRA_RPCS[value as unknown as keyof typeof EXTRA_RPCS];
+
+    const rpcs: Rpc[] = [
+      {
+        url: LOCAL_HOST,
+        tracking: "none",
+        isOpenSource: undefined,
+        trackingDetails: ""
+      },
+      {
+        url: LOCAL_HOST_2,
+        tracking: "none",
+        isOpenSource: undefined,
+        trackingDetails: ""
+      }
+    ];
+
+    if (value === "31337" || value === "1337") {
+      chainRpcs.push(...rpcs as never[]);
+    }
+
     return [value, { rpcs: chainRpcs }];
   })
 ) as Record<NetworkId, { rpcs: Rpc[] }>;

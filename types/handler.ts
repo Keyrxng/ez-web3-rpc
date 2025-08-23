@@ -1,7 +1,6 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { networkCurrencies, networkExplorers, networkRpcs } from "./constants";
 import { CHAINS_IDS, EXTRA_RPCS } from "../dynamic";
-import { LogInterface, PrettyLogs, PrettyLogsWithOk } from "./logs";
 import { RequestPayload } from "./rpc-service";
 
 export type BlockExplorer = {
@@ -41,48 +40,95 @@ export type HandlerInterface = {
   consensusCall<TMethodReturnData>(requestPayload: RequestPayload, quorumThreshold: `0.${number}`): Promise<TMethodReturnData>;
 };
 
-// This is log message prefix which can be used to identify the logs from this module
-type ModuleName = "RPCHandler Provider Proxy";
 
-type ProxySettings = {
-  retryCount: number; // how many times we'll loop the list of RPCs retrying the request before failing
-  retryDelay: number; // how long we'll wait before moving to the next RPC
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  logTier: (PrettyLogsWithOk & {}) | null; // set to "none" for no logs, null will default to "error", "verbose" will log all
-  logger: PrettyLogs | LogInterface | null; // null will default to PrettyLogs, otherwise pass in your own logger
-  strictLogs: boolean; // true is default, only the specified logTier will be logged. false will log all logs.
-  moduleName?: ModuleName | string; // this is the prefix for the logs
-  disabled?: boolean;
-};
-
+/**
+ * Configuration options for the RPC-Handler.
+ *
+ * - `NetworkId` The ID of the network to connect to.
+ *
+ * You can configure various settings for the RPC-Handler, including:
+ * - `settings.tracking` - How much data you'd like to allow providers to gather.
+ * - `settings.networkRpcs` - Custom RPC endpoints to use.
+ * - `settings.autoStorage` - Whether to store latency and provider info in LocalStorage or in-memory only.
+ *
+ */
 export type HandlerConstructorConfig = {
   networkId: NetworkId;
-  networkName: NetworkName | null;
-  tracking?: Tracking; // "yes" | "limited" | "none", default is "yes". This is the data tracking status of the RPC provider
-  networkRpcs: Rpc[] | null; // e.g "https://mainnet.infura.io/..."
-  autoStorage: boolean | null; // browser only, will store in localStorage
-  cacheRefreshCycles: number | null; // bad RPCs are excluded if they fail, this is how many cycles before they're re-tested
-  runtimeRpcs: string[] | null; // e.g "<networkId>__https://mainnet.infura.io/..." > "1__https://mainnet.infura.io/..."
-  rpcTimeout: number | null; // when the RPCs are tested they are raced, this is the max time to allow for a response
-  proxySettings: ProxySettings; // settings for the proxy
+  settings?: {
+    logLevel: "info" | "debug" | "warn" | "error";
+    /**
+     * The data tracking status of the RPC provider, which can be:
+     * - `yes` - Allow all providers regards of the data they gather
+     * - `limited` - Allow providers that only gather minimal data
+     * - `none` - Allow only providers that gather zero data at all
+     *
+     * Defaults to `none`, meaning less providers will be available,
+     * adjust this setting to allow more providers if needed or if tracking
+     * is of no consequence.
+     *
+     * PrivacyStatements can be found at https://github.com/DefiLlama/chainlist/blob/main/constants/extraRpcs.js#L5
+     */
+    tracking?: Tracking;
+    /**
+     * The maximum time to allow for a response from the RPC provider.
+     */
+    rpcTimeout?: number; 
+    /**
+     * The number of cycles to wait before re-testing all RPCs,
+     * including those which are removed mid-cycle if they failed to handle
+     * any requests.
+     */
+    cacheRefreshCycles?: number; 
+    /**
+     * You must inject your own custom RPCs here, including but not limited
+     * to, any testing or development endpoints such as `http://localhost:8545` etc.
+     *
+     * This is not a requirement if you intend to use public RPCs.
+     *
+     * E.G. `http://localhost:8545`
+     * E.G. `https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID`
+     */
+    networkRpcs: Rpc[] | null;
+    /**
+     * BROWSER ONLY
+     *
+     * Whether to store latency and provider info in LocalStorage
+     * or in-memory only.
+     */
+    autoStorage: boolean | null;
+  };
+  /**
+   * Settings from proxying Ethereum JSON-RPC calls.
+   *
+   * - `retryCount` - How many times we'll loop the list of RPCs retrying the request before failing.
+   * - `retryDelay` - How long we'll wait before moving to the next RPC.
+   *
+   * Can be declared globally or overriden at the function level.
+   */
+  proxySettings: {
+    retryCount: number; 
+    retryDelay: number; 
+  };
 };
 
 export type NetworkRPCs = typeof networkRpcs;
 export type NetworkCurrencies = typeof networkCurrencies;
 export type NetworkExplorers = typeof networkExplorers;
 
-/**
- * Without this NetworkName builds as `any` because `keyof typeof EXTRA_RPCS`
- * extends symbol which cannot be used to index an object
- */
 type NetworkIds<T extends PropertyKey = keyof typeof EXTRA_RPCS> = {
   [K in T]: K extends string ? K : never;
-}[T];
+}[T] | "31337" | "1337";
 
-// filtered NetworkId union
+/**
+ * Union of all supported blockchain network IDs.
+ *
+ * Note: `1337` & `31337` have been injected for convenience.
+ */
 export type NetworkId = NetworkIds | "31337" | "1337";
 
-// unfiltered Record<NetworkId, NetworkName>
+/**
+ * Unfiltered mapping of all supported blockchain network IDs to their names.
+ */
 type ChainsUnfiltered = {
   -readonly [K in keyof typeof CHAINS_IDS]: (typeof CHAINS_IDS)[K];
 };
