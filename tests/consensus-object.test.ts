@@ -5,7 +5,7 @@ describe('consensus object stable stringify', () => {
   const handler = new RPCHandler({
     networkId: '999999' as any,
     strategy: 'fastest',
-    settings: { tracking: 'none', networkRpcs: [], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 5, cacheRefreshCycles: 1 },
+    settings: { tracking: 'none', networkRpcs: [], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 5  },
     proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 50 }
   });
   (handler as any).rpcs = [ { url: LOCAL_HOST, tracking: 'none' }, { url: LOCAL_HOST_2, tracking: 'none' }, { url: 'http://127.0.0.1:8547', tracking: 'none' } ];

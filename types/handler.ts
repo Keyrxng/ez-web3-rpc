@@ -1,8 +1,6 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { networkCurrencies, networkExplorers, networkRpcs } from "./constants";
 import { CHAINS_IDS, EXTRA_RPCS } from "../dynamic";
-import { RequestPayload } from "./rpc-service";
-import { LogLevel } from "./logs";
+import { LogLevel } from "../src/logging/logger"
 
 export type BlockExplorer = {
   name: string;
@@ -11,34 +9,10 @@ export type BlockExplorer = {
   icon?: string;
 };
 
-export type ValidBlockData = {
-  jsonrpc: string;
-  id: number;
-  result: {
-    number: string;
-    timestamp: string;
-    hash: string;
-  };
-};
-
-export type Token = {
-  decimals: number;
-  address: string;
-  symbol: string;
-};
-
 export type NativeToken = {
   name: string;
   symbol: string;
   decimals: number;
-};
-
-export type HandlerInterface = {
-  getProvider(): JsonRpcProvider | null;
-  getFastestRpcProvider(): Promise<JsonRpcProvider | null>;
-  getFirstAvailableRpcProvider(): Promise<JsonRpcProvider | null>;
-  testRpcPerformance(): Promise<JsonRpcProvider | null>;
-  consensusCall<TMethodReturnData>(requestPayload: RequestPayload, quorumThreshold: `0.${number}`): Promise<TMethodReturnData>;
 };
 
 /**
@@ -55,6 +29,14 @@ export type HandlerInterface = {
 export type HandlerConstructorConfig = {
   networkId: NetworkId;
   settings?: {
+    /**
+     * Whether to store latency and provider info in LocalStorage
+     * or in-memory only.
+     */
+    browserLocalStorage?: boolean;
+    /**
+     * The logging level to use for the RPC-Handler.
+     */
     logLevel?: LogLevel;
     /**
      * The data tracking status of the RPC provider, which can be:
@@ -78,7 +60,6 @@ export type HandlerConstructorConfig = {
      * including those which are removed mid-cycle if they failed to handle
      * any requests.
      */
-    cacheRefreshCycles?: number; 
     /**
      * You must inject your own custom RPCs here, including but not limited
      * to, any testing or development endpoints such as `http://localhost:8545` etc.
@@ -102,12 +83,14 @@ export type HandlerConstructorConfig = {
    *
    * - `retryCount` - How many times we'll loop the list of RPCs retrying the request before failing.
    * - `retryDelay` - How long we'll wait before moving to the next RPC.
-   *
+   * - `rpcCallTimeout` - The maximum time to wait for a response from the RPC provider.
+   * 
    * Can be declared globally or overriden at the function level.
    */
-  proxySettings: {
+  proxySettings?: {
     retryCount: number; 
-    retryDelay: number; 
+    retryDelay: number;
+    rpcCallTimeout: number;
   };
 };
 

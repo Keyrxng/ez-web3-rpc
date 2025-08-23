@@ -22,7 +22,7 @@ describe('Consensus (src)', () => {
   function makeHandler() {
     return new RPCHandler({
       networkId: '31337',
-      settings: { tracking: 'none', networkRpcs: rpcUrls.map(url => ({ url })), browserLocalStorage: false, logLevel: 'none', rpcTimeout: 5, cacheRefreshCycles: 1 },
+      settings: { tracking: 'none', networkRpcs: rpcUrls.map(url => ({ url })), browserLocalStorage: false, logLevel: 'none', rpcTimeout: 5  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 20 },
       strategy: 'fastest'
     });

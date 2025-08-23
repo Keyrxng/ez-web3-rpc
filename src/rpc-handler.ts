@@ -120,4 +120,3 @@ export class RPCHandler {
         this.logger.log(level === 'ok' ? 'info' : level as any, message, metadata);
     }
 }
-

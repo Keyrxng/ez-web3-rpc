@@ -19,7 +19,7 @@ describe('BFT consensus failure path', () => {
         { url: 'http://localhost:8556', tracking: 'none' },
         { url: 'http://localhost:8557', tracking: 'none' },
         { url: 'http://localhost:8558', tracking: 'none' },
-      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 10, cacheRefreshCycles: 1 },
+      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 10  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 50 }
     });
     const req: JsonRpcRequest = { jsonrpc:'2.0', method:'eth_blockNumber', params:[], id:1 };

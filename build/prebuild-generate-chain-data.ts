@@ -132,7 +132,7 @@ export async function generateChainData() {
   const overrides = await loadOverrides();
 
   // fetch upstream same sources chainlist uses
-  const fetchImpl = globalThis.fetch ?? (await import("node-fetch")).default;
+  const fetchImpl = globalThis.fetch;
   const [chainsRes, llamaRes] = await Promise.all([
     fetchImpl("https://chainid.network/chains.json").then((r: any) => r.json()),
     fetchImpl("https://api.llama.fi/chains").then((r: any) => r.json()),

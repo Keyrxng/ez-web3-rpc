@@ -20,7 +20,6 @@ function makeHandler(extra: Partial<RpcHandlerOptions> = {}) {
       browserLocalStorage: false,
       logLevel: 'error',
       rpcTimeout: 1200,
-      cacheRefreshCycles: 1,
     },
     proxySettings: { retryCount: 2, retryDelay: 25, rpcCallTimeout: 1500 },
   } as any;

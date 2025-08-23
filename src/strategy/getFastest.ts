@@ -7,4 +7,3 @@ export async function getFastest(rpcs: Rpc[], opts: { timeout: number }) {
   const fastest = pickFastest(latencies);
   return { fastest, latencies, checkResults };
 }
-

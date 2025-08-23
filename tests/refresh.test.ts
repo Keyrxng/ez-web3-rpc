@@ -19,7 +19,7 @@ describe('RPCHandler refresh()', () => {
       settings: { tracking: 'none', networkRpcs: [
         { url: 'http://localhost:8561', tracking: 'none' },
         { url: 'http://localhost:8562', tracking: 'none' },
-      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 200, cacheRefreshCycles: 1 },
+      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 200  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 200 }
     });
     await handler.init();

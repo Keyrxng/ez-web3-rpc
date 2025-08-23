@@ -8,7 +8,7 @@ describe('RPCHandler error & log branches', () => {
     return new RPCHandler({
       networkId: '31337' as any,
       strategy: opts.strategy || 'fastest',
-  settings: { tracking: 'none', networkRpcs: [ { url: LOCAL_HOST, tracking: 'none' } ], browserLocalStorage: false, logLevel: 'debug', rpcTimeout: 5, cacheRefreshCycles: 1 },
+  settings: { tracking: 'none', networkRpcs: [ { url: LOCAL_HOST, tracking: 'none' } ], browserLocalStorage: false, logLevel: 'debug', rpcTimeout: 5  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 50 },
     } as any);
   }

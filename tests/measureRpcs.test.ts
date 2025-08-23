@@ -24,11 +24,11 @@ describe('measureRpcs edge cases', () => {
       .mockResolvedValueOnce({ data: { result: '0x604060808152600DEF' } });
 
     const { latencies } = await measureRpcs([
-      { url: 'http://r1' } as any,
-      { url: 'http://r2' } as any,
-      { url: 'http://r3' } as any,
+      { url: 'http://localhost:8545' } as any,
+      { url: 'http://localhost:8546' } as any,
+      { url: 'http://localhost:8547' } as any,
     ], { timeout: 50 });
 
-    expect(Object.keys(latencies)).toEqual(['http://r1']);
+    expect(Object.keys(latencies)).toEqual(['http://localhost:8545']);
   });
 });

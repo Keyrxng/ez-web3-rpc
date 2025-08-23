@@ -2,13 +2,10 @@ import {
   NetworkId,
   NetworkName,
   HandlerConstructorConfig,
-  HandlerInterface,
   NativeToken,
   NetworkCurrencies,
   NetworkExplorers,
   NetworkRPCs,
-  Token,
-  ValidBlockData,
 } from "./types/handler";
 
 import {
@@ -28,24 +25,21 @@ import {
   getNetworkData,
 } from "./types/constants";
 
-import { RPCHandler } from "./types/rpc-handler";
-import { PrettyLogs } from "./types/logs";
-import { StorageService } from "./types/storage-service";
-import { RPCService } from "./types/rpc-service";
-
 export { LOCAL_HOST, networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, permit2Address };
 export { getNetworkId, getNetworkFaucets, getNetworkExplorer, getNetworkName, getNetworkRpcs, getNetworkCurrency, getNetworkData };
+
+
+import { RPCHandler, RpcHandlerOptions } from "./src"
+
 
 export type {
   NetworkId,
   NetworkName,
   HandlerConstructorConfig,
-  HandlerInterface,
   NativeToken,
   NetworkCurrencies,
   NetworkExplorers,
   NetworkRPCs,
-  Token,
-  ValidBlockData,
 };
-export { RPCHandler, PrettyLogs, StorageService, RPCService };
+
+export { RPCHandler, RpcHandlerOptions };

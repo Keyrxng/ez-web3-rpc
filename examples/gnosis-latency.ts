@@ -3,14 +3,6 @@ import { RPCHandler } from '../src';
 async function main() {
   const handler = new RPCHandler({
     networkId: '100', // Gnosis Chain ID
-    proxySettings: { retryCount: 3, retryDelay: 100 },
-    settings: {
-      tracking: 'yes', // allow limited/no tracking providers to widen pool
-      rpcTimeout: 4000,
-      cacheRefreshCycles: 5,
-      browserLocalStorage: false,
-      logLevel: 'info',
-    },
   });
 
   console.log('Initializing handler for Gnosis (chainId=100)...');

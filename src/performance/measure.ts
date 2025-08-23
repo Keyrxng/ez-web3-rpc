@@ -1,14 +1,13 @@
-import axios, { AxiosError } from 'axios';
 import { Rpc } from '../../types/handler';
 
-export interface LatencyMap { [url: string]: number; }
+export type LatencyMap = { [url: string]: number; }
 
 type JsonRpcPayload = { jsonrpc: '2.0'; method: string; params: any[]; id: number };
 
 const blockPayload: JsonRpcPayload = { jsonrpc: '2.0', method: 'eth_getBlockByNumber', params: ['latest', false], id: 1 };
 const codePayload: JsonRpcPayload = { jsonrpc: '2.0', method: 'eth_getCode', params: ['0x000000000022D473030F116dDEE9F6B43aC78BA3', 'latest'], id: 1 };
 
-interface RpcCheckResult { url: string; success: boolean; duration: number; blockNumber?: string; bytecodeOk?: boolean; }
+type RpcCheckResult = { url: string; success: boolean; duration: number; blockNumber?: string; bytecodeOk?: boolean; }
 
 function isPermit2BytecodeValid(bytecode: string | undefined): boolean {
   if (!bytecode) return false;
@@ -19,10 +18,15 @@ function isPermit2BytecodeValid(bytecode: string | undefined): boolean {
 async function post(url: string, payload: JsonRpcPayload, timeout: number): Promise<{ ok: boolean; data?: any; duration: number; error?: string; }>{
   const started = performance.now();
   try {
-    const res = await axios.post(url, payload, { timeout, headers: { 'Content-Type': 'application/json' } });
-    return { ok: !!res.data?.result, data: res.data, duration: performance.now() - started };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeout),
+    });
+    const data = await res.json();
+    return { ok: !!data.result, data, duration: performance.now() - started };
   } catch (e) {
-    if (e instanceof AxiosError) return { ok: false, error: e.code === 'ECONNABORTED' ? 'timeout' : e.message, duration: performance.now() - started };
     return { ok: false, error: String(e), duration: performance.now() - started };
   }
 }

@@ -18,7 +18,7 @@ describe('Persistence (localStorage)', () => {
     const handler = new RPCHandler({
       networkId,
       strategy: 'fastest',
-  settings: { tracking: 'none', networkRpcs: [ { url: 'http://localhost:8554', tracking: 'none' } ], browserLocalStorage: true, logLevel: 'error', rpcTimeout: 10, cacheRefreshCycles: 1 },
+  settings: { tracking: 'none', networkRpcs: [ { url: 'http://localhost:8554', tracking: 'none' } ], browserLocalStorage: true, logLevel: 'error', rpcTimeout: 10  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 20 }
     });
     await handler.init();

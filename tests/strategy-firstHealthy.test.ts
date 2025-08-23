@@ -13,7 +13,7 @@ describe('RPCHandler strategy=firstHealthy', () => {
     { url: 'http://localhost:8563', tracking: 'none' },
     { url: 'http://localhost:8564', tracking: 'none' },
     { url: 'http://localhost:8545', tracking: 'none' },
-      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 500, cacheRefreshCycles: 1 },
+      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 500  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 500 }
     });
     await handler.init();

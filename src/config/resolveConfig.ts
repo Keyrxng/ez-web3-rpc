@@ -19,10 +19,6 @@ export interface NormalizedConfig {
     rpcTimeout: number;
     /** Timeout for individual RPC calls (in milliseconds) */
     rpcCallTimeout: number;
-    /** The amount of cycles (getFastestProvider calls) to 
-     * re-test previously excluded RPCs deemed unhealthy in the _n_ cycles
-     */
-    cacheRefreshCycles: number;
     /** Whether to use browser localStorage for persisting latency cache */
     browserLocalStorage: boolean;
     /** Log level for this package including RPC calls. */
@@ -42,7 +38,6 @@ export function resolveConfig(config: HandlerConstructorConfig): NormalizedConfi
     settings: {
       rpcTimeout: config.settings?.rpcTimeout ?? 3000,
       rpcCallTimeout: config.proxySettings?.rpcCallTimeout ?? 10000,
-      cacheRefreshCycles: config.settings?.cacheRefreshCycles ?? 10,
       browserLocalStorage: config.settings?.browserLocalStorage ?? false,
       logLevel: config.settings?.logLevel || 'info',
     },

@@ -1,11 +1,11 @@
 {
-  "name": "@ubiquity-dao/rpc-handler",
-  "version": "1.2.3",
-  "description": "Uses Chainlist's RPC collection racing them returning the lowest latency RPC",
+  "name": "web3-rpcs",
+  "version": "1.0.0",
+  "description": "",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
-  "author": "Ubiquity",
+  "author": "@Keyrxng",
   "license": "MIT",
   "files": [
     "dist"
@@ -26,7 +26,7 @@
     "build": "run-s clean build:index build:types",
     "postinstall": "git submodule update --init --recursive",
     "test:anvil": "npx tsx ./tests/anvil.ts",
-    "test": "jest",
+    "test": "jest --runInBand --silent",
     "bench:compare": "npx tsx benchmarks/compare-handlers.ts",
     "clean": "rm -rf dist"
   },
@@ -38,9 +38,7 @@
     "open-source"
   ],
   "dependencies": {
-    "@ethersproject/providers": "5.7.2",
-    "axios": "^1.7.1",
-    "node-fetch": "^3.3.2"
+    "@ethersproject/providers": "5.7.2"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
@@ -53,7 +51,6 @@
     "@cspell/dict-typescript": "^3.1.2",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.19",
-    "@types/node-fetch": "^2.6.11",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
     "cspell": "^8.4.0",

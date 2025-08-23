@@ -24,7 +24,7 @@ describe('Consensus cooldown handling', () => {
       settings: { tracking: 'none', networkRpcs: [
         { url: 'http://localhost:8559', tracking: 'none' },
         { url: 'http://localhost:8560', tracking: 'none' },
-      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 50, cacheRefreshCycles: 1 },
+      ], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 50  },
       proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 100 }
     });
     // Directly manipulate rpcs for consensus (no init needed)

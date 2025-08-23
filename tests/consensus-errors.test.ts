@@ -3,7 +3,7 @@ import { LOCAL_HOST, LOCAL_HOST_2 } from '../types/constants';
 
 describe('consensus error early exits', () => {
   const baseOpts = {
-    settings: { tracking: 'none', networkRpcs: [], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 5, cacheRefreshCycles: 1 },
+    settings: { tracking: 'none', networkRpcs: [], browserLocalStorage: false, logLevel: 'error', rpcTimeout: 5  },
     proxySettings: { retryCount: 0, retryDelay: 0, rpcCallTimeout: 50 },
   } as any;
 
