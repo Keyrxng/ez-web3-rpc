@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { LOCAL_HOST, networkRpcs, networkIds, LOCAL_HOST_2 } from "./constants";
-import { HandlerConstructorConfig, NetworkId, NetworkName, Rpc, Tracking} from "./handler";
+import { HandlerConstructorConfig, NetworkId, NetworkName, Rpc, Tracking } from "./handler";
 import { Metadata, PrettyLogs, PrettyLogsWithOk } from "./logs";
 import { RPCService } from "./rpc-service";
 import { StorageService } from "./storage-service";
@@ -29,56 +29,54 @@ export function getRpcUrls(rpcs: Rpc[]) {
 
 export class RPCHandler {
   private static _instance: RPCHandler | null = null;
-  private _rpcService: RPCService;
-  private _provider: JsonRpcProvider | null = null;
-  private _networkId: NetworkId;
-  private _networkName: NetworkName;
-  private _env: string = "node";
-
-  private _rpcTimeout: number = Number.MAX_SAFE_INTEGER; // ms
-  private _cacheRefreshCycles: number = 10;
-  private _refreshLatencies: number = 0;
-  private _autoStorage: boolean = false;
-
-  private _runtimeRpcs: string[] = [];
-  private _latencies: Record<string, number> = {};
-
-  private _networkRpcs: Rpc[];
+  public rpcService: RPCService;
+  public provider: JsonRpcProvider | null = null;
+  public networkId: NetworkId;
+  public networkName: NetworkName;
+  public runtimeEnv: string = "node";
+  public settings = {
+    tracking: "none",
+    rpcTimeout: 3000,
+    cacheRefreshCycles: 10,
+    autoStorage: false,
+    logTier: "info"
+  };
+  public refreshLatencies: number = 0;
+  public runtimeRpcs: string[] = [];
+  public latencies: Record<string, number> = {};
+  public networkRpcs: Rpc[];
 
   private _proxySettings: HandlerConstructorConfig["proxySettings"] = {
-    disabled: false,
     retryCount: 3,
     retryDelay: 100,
-    logTier: "ok",
-    logger: new PrettyLogs(),
-    strictLogs: true,
-    moduleName: "RPCHandler",
   };
 
   public security: Security;
 
+  private _logger: PrettyLogs = new PrettyLogs();
+
   constructor(config: HandlerConstructorConfig) {
-    this._networkId = config.networkId;
-    this._networkRpcs = this._filterRpcs(networkRpcs[this._networkId].rpcs, config.tracking || "yes");
-    this._networkName = networkIds[this._networkId];
+    this.networkId = config.networkId;
+    this.networkRpcs = this._filterRpcs(networkRpcs[this.networkId].rpcs, config.settings?.tracking || "none");
+    this.networkName = networkIds[this.networkId];
 
     this._initialize(config);
-    this._rpcService = new RPCService(this);
-    this.security = new Security(this, this._rpcService);
+    this.rpcService = new RPCService(this);
+    this.security = new Security(this, this.rpcService);
   }
 
   /**
    * Loops through all RPCs for a given network id and returns a provider with the first successful network.
    */
   public async getFirstAvailableRpcProvider() {
-    const rpcList = [...networkRpcs[this._networkId].rpcs].filter((rpc) => rpc.url.includes("https"));
+    const rpcList = [...networkRpcs[this.networkId].rpcs].filter((rpc) => rpc.url.includes("https"));
     shuffleArray(rpcList);
-    const rpcPromises = this._rpcService.createBlockRequestAndByteCodeRacePromises(rpcList.map((rpc) => rpc.url));
+    const rpcPromises = this.rpcService.createBlockRequestAndByteCodeRacePromises(rpcList.map((rpc) => rpc.url));
     for (const rpc of rpcList) {
       const results = await Promise.allSettled(rpcPromises[rpc.url] ?? []);
       const hasPassedAllChecks = results.every((res) => res && res.status === "fulfilled" && res.value.success);
       if (hasPassedAllChecks) {
-        return new JsonRpcProvider({ url: rpc.url, skipFetchSetup: true }, Number(this._networkId));
+        return new JsonRpcProvider({ url: rpc.url, skipFetchSetup: true }, Number(this.networkId));
       }
     }
 
@@ -89,15 +87,15 @@ export class RPCHandler {
   public async getFastestRpcProvider(): Promise<JsonRpcProvider> {
     let fastest = await this.testRpcPerformance();
 
-    if (fastest && fastest?.connection.url.includes("localhost") && !(this._networkId === "31337" || this._networkId === "1337")) {
+    if (fastest && fastest?.connection.url.includes("localhost") && !(this.networkId === "31337" || this.networkId === "1337")) {
       fastest = await this.testRpcPerformance();
     }
 
-    this._provider = this.createProviderProxy(fastest, this);
-    this.log("ok", `Provider initialized: `, { provider: this._provider?.connection.url });
-    this.log("info", "Initialized RPC data:", { runTimeRpcs: this._runtimeRpcs, latencies: this._latencies });
+    this.provider = this.createProviderProxy(fastest, this);
+    this.log("ok", `Provider initialized: `, { provider: this.provider?.connection.url });
+    this.log("info", "Initialized RPC data:", { runTimeRpcs: this.runtimeRpcs, latencies: this.latencies });
 
-    return this._provider;
+    return this.provider;
   }
 
   /**
@@ -107,12 +105,6 @@ export class RPCHandler {
    * any retry or RPC reselection logic will be down to the user to implement
    */
   createProviderProxy(provider: JsonRpcProvider, handler: RPCHandler): JsonRpcProvider {
-    /**
-     * It is not recommended to disable this feature
-     * unless you are handling retries and RPC reselection yourself
-     */
-    if (this._proxySettings.disabled) return provider;
-
     return new Proxy(provider, {
       get: function (target: JsonRpcProvider, prop: keyof JsonRpcProvider) {
         // if it's not a function, return the property
@@ -130,7 +122,11 @@ export class RPCHandler {
                 handler.log(
                   "verbose",
                   `Successfully called provider method ${prop.toString()}`,
-                  handler.metadataMaker(response, prop as string, args, { rpc: target.connection.url })
+                  {
+                    rpc: target.connection.url,
+                    method: prop.toString(),
+                    args,
+                  }
                 );
                 return response;
               }
@@ -139,22 +135,33 @@ export class RPCHandler {
               handler.log(
                 "error",
                 `Failed to call provider method ${prop.toString()}, retrying...`,
-                handler.metadataMaker(e, prop as string, args, { rpc: target.connection.url })
+                {
+                  rpc: target.connection.url,
+                  method: prop.toString(),
+                  args,
+                  stack: e instanceof Error ? e.stack : String(e),
+                }
               );
             }
 
-            const latencies: Record<string, number> = handler.getLatencies();
-            const sortedLatencies = Object.entries(latencies).sort((a, b) => a[1] - b[1]);
+            const sortedLatencies = Object.entries(handler.latencies).sort((a, b) => a[1] - b[1]);
 
             if (!sortedLatencies.length) {
               throw handler.log(
                 "fatal",
                 `${NO_RPCS_AVAILABLE}`,
-                handler.metadataMaker(String(new Error(NO_RPCS_AVAILABLE)), "createProviderProxy", args, { sortedLatencies, networks: handler._networkRpcs })
+                {
+                  sortedLatencies,
+                  networks: handler.networkRpcs
+                }
               );
             }
 
-            handler.log("debug", `Current provider failed, retrying with next fastest provider...`, handler.metadataMaker({}, prop.toString(), [], args));
+            handler.log("debug", `Current provider failed, retrying with next fastest provider...`, {
+              rpc: target.connection.url,
+              method: prop.toString(),
+              args,
+            });
 
             // how many times we'll loop the whole list of RPCs
             let loops = handler._proxySettings.retryCount;
@@ -170,7 +177,7 @@ export class RPCHandler {
                       url: rpc.split("__")[1],
                       skipFetchSetup: true,
                     },
-                    Number(handler._networkId)
+                    Number(handler.networkId)
                   );
                   const response = (await (newProvider[prop] as (...args: unknown[]) => Promise<unknown>)(...args)) as { result?: unknown; error?: unknown };
 
@@ -178,7 +185,11 @@ export class RPCHandler {
                     handler.log(
                       "verbose",
                       `Successfully called provider method ${prop.toString()}`,
-                      handler.metadataMaker(response, prop as string, args, { rpc })
+                      {
+                        rpc: target.connection.url,
+                        method: prop.toString(),
+                        args,
+                      }
                     );
                     res = response;
 
@@ -190,7 +201,11 @@ export class RPCHandler {
                     handler.log(
                       "fatal",
                       `Failed to call provider method ${prop.toString()} after ${handler._proxySettings.retryCount} attempts`,
-                      handler.metadataMaker(e, prop as string, args)
+                      {
+                        rpc: target.connection.url,
+                        method: prop.toString(),
+                        args,
+                      }
                     );
                     throw e;
                   } else {
@@ -223,7 +238,7 @@ export class RPCHandler {
    */
   populateRuntimeFromNetwork(networkRpcs: string[]) {
     return networkRpcs.map((rpc) => {
-      if (rpc.startsWith(`${this._networkId}__`)) {
+      if (rpc.startsWith(`${this.networkId}__`)) {
         return rpc.split("__")[1];
       }
 
@@ -233,20 +248,11 @@ export class RPCHandler {
 
   public async testRpcPerformance(): Promise<JsonRpcProvider> {
     const shouldRefreshRpcs =
-      Object.keys(this._latencies).filter((rpc) => rpc.startsWith(`${this._networkId}__`)).length <= 1 || this._refreshLatencies >= this._cacheRefreshCycles;
+      Object.keys(this.latencies)
+        .filter((rpc) => rpc.startsWith(`${this.networkId}__`)).length <= 1
+      || this.refreshLatencies >= this.settings.cacheRefreshCycles;
 
-    if (shouldRefreshRpcs) {
-      this._runtimeRpcs = getRpcUrls(this._networkRpcs);
-      // either the latencies are empty or we've reached the refresh cycle
-      this._refreshLatencies = 0;
-    } else if (this._latencies && Object.keys(this._latencies).length > 0) {
-      // if we have latencies, we'll use them to populate the runtimeRpcs
-      this._runtimeRpcs = this.populateRuntimeFromNetwork(Object.keys(this._latencies));
-    } else if (this._runtimeRpcs.length === 0) {
-      // if we have no latencies and no runtimeRpcs, we'll populate the runtimeRpcs from the networkRpcs
-      this._runtimeRpcs = getRpcUrls(this._networkRpcs);
-    }
-
+    this.manageRpcRefresh(shouldRefreshRpcs);
     await this._testRpcPerformance();
     const fastestRpcUrl = this._findFastestRpcFromLatencies();
 
@@ -254,44 +260,62 @@ export class RPCHandler {
       throw this.log(
         "fatal",
         `Failed to find fastest RPC`,
-        this.metadataMaker(String(new Error(NO_RPCS_AVAILABLE)), "testRpcPerformance", [], { latencies: this._latencies, networkId: this._networkId })
+        {
+          latencies: this.latencies,
+          networkId: this.networkId,
+        }
       );
     }
 
-    this._provider = this.createProviderProxy(new JsonRpcProvider({ url: fastestRpcUrl, skipFetchSetup: true }, Number(this._networkId)), this);
+    this.provider = this.createProviderProxy(new JsonRpcProvider({ url: fastestRpcUrl, skipFetchSetup: true }, Number(this.networkId)), this);
 
-    if (this._autoStorage) {
-      StorageService.setLatencies(this._env, this._latencies);
-      StorageService.setRefreshLatencies(this._env, this._refreshLatencies);
+    if (this.settings.autoStorage) {
+      StorageService.setLatencies(this.runtimeEnv, this.latencies);
+      StorageService.setRefreshLatencies(this.runtimeEnv, this.refreshLatencies);
     }
 
-    if (!this._provider) {
+    if (!this.provider) {
       throw this.log(
         "fatal",
         `Failed to create provider`,
-        this.metadataMaker(String(new Error("No provider available")), "testRpcPerformance", [], {
-          latencies: this._latencies,
+        {
+          latencies: this.latencies,
           fastestRpcUrl: fastestRpcUrl,
-        })
+        }
       );
     }
 
-    return this._provider;
+    return this.provider;
+  }
+
+  private manageRpcRefresh(shouldRefreshRpcs: boolean) {
+    if (shouldRefreshRpcs) {
+      // either the latencies are empty or we've reached the refresh cycle
+      this.runtimeRpcs = getRpcUrls(this.networkRpcs);
+      this.refreshLatencies = 0;
+    } else if (this.latencies && Object.keys(this.latencies).length > 0) {
+      // if we have latencies, we'll use them to populate the runtimeRpcs
+      this.runtimeRpcs = this.populateRuntimeFromNetwork(Object.keys(this.latencies));
+    } else if (this.runtimeRpcs.length === 0) {
+      // if we have no latencies and no runtimeRpcs, we'll populate the runtimeRpcs from the networkRpcs
+      this.runtimeRpcs = getRpcUrls(this.networkRpcs);
+    }
   }
 
   public getProvider(): JsonRpcProvider {
-    if (!this._provider) {
+    if (!this.provider) {
       throw this.log(
         "fatal",
         `Provider is not initialized`,
-        this.metadataMaker(String(new Error("Provider is not initialized")), "getProvider", [], {
-          networkRpcs: this._networkRpcs,
-          runtimeRpcs: this._runtimeRpcs,
-          latencies: this._latencies,
-        })
+        {
+          latencies: this.latencies,
+          networkId: this.networkId,
+          runtimeRpcs: this.runtimeRpcs,
+          networkRpcs: this.networkRpcs,
+        }
       );
     }
-    return this._provider;
+    return this.provider;
   }
 
   public static getInstance(config: HandlerConstructorConfig): RPCHandler {
@@ -309,180 +333,39 @@ export class RPCHandler {
     RPCHandler._instance = null;
   }
 
-  public getRuntimeRpcs(): string[] {
-    return this._runtimeRpcs;
-  }
-
-  public getNetworkId(): NetworkId {
-    return this._networkId;
-  }
-
-  public getNetworkName(): NetworkName {
-    return this._networkName;
-  }
-
-  public getNetworkRpcs(): Rpc[] {
-    return this._networkRpcs;
-  }
-
-  public getLatencies(): Record<string, number> {
-    return this._latencies;
-  }
-
-  public getRpcTimeout(): number {
-    return this._rpcTimeout;
-  }
 
   updateRpcProviderLatency(rpcUrl: string, latency: number): void {
-    this._latencies[`${this._networkId}__${rpcUrl}`] = latency;
+    this.latencies[`${this.networkId}__${rpcUrl}`] = latency;
   }
 
   updateRuntimeRpc(rpcUrl: string, action: "add" | "remove"): void {
     if (action === "add") {
-      this._runtimeRpcs.push(rpcUrl);
+      this.runtimeRpcs.push(rpcUrl);
     } else {
-      this._runtimeRpcs = this._runtimeRpcs.filter((rpc) => rpc !== rpcUrl);
+      this.runtimeRpcs = this.runtimeRpcs.filter((rpc) => rpc !== rpcUrl);
     }
   }
 
   public getRefreshLatencies(): number {
-    return this._refreshLatencies;
+    return this.refreshLatencies;
   }
 
   public getCacheRefreshCycles(): number {
-    return this._cacheRefreshCycles;
+    return this.settings.cacheRefreshCycles;
   }
 
   private async _testRpcPerformance(): Promise<void> {
-    await this._rpcService.testRpcPerformance();
-    this._refreshLatencies++;
-    StorageService.setLatencies(this._env, this._latencies);
-    StorageService.setRefreshLatencies(this._env, this._refreshLatencies);
+    await this.rpcService.testRpcPerformance();
+    this.refreshLatencies++;
+    StorageService.setLatencies(this.runtimeEnv, this.latencies);
+    StorageService.setRefreshLatencies(this.runtimeEnv, this.refreshLatencies);
   }
 
-  // creates metadata for logging
-  metadataMaker(error: Error | unknown, method: string, args: unknown[], metadata?: unknown[] | unknown): Metadata {
-    const err = error instanceof Error ? error : undefined;
-    if (err) {
-      return {
-        error: err,
-        method,
-        args,
-        metadata,
-      };
-    } else {
-      return {
-        method,
-        args,
-        metadata,
-      };
-    }
-  }
-
-  log(tier: PrettyLogsWithOk, message: string, metadata?: Metadata): void {
-    if (!this._proxySettings?.logger) {
-      this._proxySettings.logger = new PrettyLogs();
-    }
-
-    let logTier = this._proxySettings?.logTier;
-
-    if (!logTier) {
-      this._proxySettings.logTier = "ok";
-      logTier = this._proxySettings.logTier;
-    } else if (logTier === "none") {
-      return;
-    }
-
-    const isStrict = this._proxySettings.strictLogs;
-
-    message = `[${this._proxySettings.moduleName}] ` + message;
-
-    if (isStrict && logTier === tier) {
-      // if strictLogs is true, only log the tier specified
-      this._proxySettings.logger?.[tier](message, metadata);
-    } else if (logTier === "verbose" || !isStrict) {
-      // if strictLogs is false or tier is "verbose" log all logs
-      this._proxySettings.logger?.log(tier, message, metadata);
-    }
-
-    if (tier === "fatal") {
-      throw new Error(message + JSON.stringify(metadata));
-    }
-  }
-
-  private _updateConfig(config: HandlerConstructorConfig): void {
-    if (config.proxySettings) {
-      this._proxySettings = {
-        ...this._proxySettings,
-        ...config.proxySettings,
-        // ensuring the logger is not null
-        logger: config.proxySettings.logger || this._proxySettings.logger,
-        // ensuring the logTier is not null
-        logTier: config.proxySettings.logTier || this._proxySettings.logTier,
-      };
-    }
-
-    if (config.networkName) {
-      this._networkName = config.networkName;
-    }
-
-    if (config.cacheRefreshCycles) {
-      this._cacheRefreshCycles = config.cacheRefreshCycles;
-    }
-
-    if (config.rpcTimeout) {
-      this._rpcTimeout = config.rpcTimeout;
-    }
-
-    if (config.autoStorage) {
-      this._autoStorage = true;
-      this._latencies = StorageService.getLatencies(this._env, this._networkId);
-      this._refreshLatencies = StorageService.getRefreshLatencies(this._env);
-    }
-  }
-
-  private _filterRpcs(networks: Rpc[], tracking: Tracking) {
-    return networks.filter((rpc) => {
-      if (tracking == "yes") {
-        return true;
-      } else if (tracking == "limited") {
-        return rpc.tracking == "limited" || rpc.tracking == "none";
-      } else if (tracking == "none") {
-        return rpc.tracking == "none";
-      }
-      return false;
-    });
-  }
-
-  private _initialize(config: HandlerConstructorConfig): void {
-    this._env = typeof window === "undefined" ? "node" : "browser";
-    if (config.networkRpcs && config.networkRpcs.length > 0) {
-      if (this._networkId === "31337" || this._networkId === "1337") {
-        this._networkRpcs = [{ url: LOCAL_HOST }, { url: LOCAL_HOST_2 }];
-      } else if (this._networkRpcs?.length > 0) {
-        this._networkRpcs = [...this._networkRpcs, ...config.networkRpcs];
-      } else {
-        this._networkRpcs = config.networkRpcs;
-      }
-    }
-
-    if (config.runtimeRpcs && config.runtimeRpcs.length > 0) {
-      if (this._networkId === "31337" || this._networkId === "1337") {
-        this._runtimeRpcs = [`${LOCAL_HOST}`, `${LOCAL_HOST_2}`, ...config.runtimeRpcs];
-      } else if (this._runtimeRpcs?.length > 0) {
-        this._runtimeRpcs = [...this._runtimeRpcs, ...config.runtimeRpcs];
-      } else {
-        this._runtimeRpcs = config.runtimeRpcs;
-      }
-    }
-
-    this._updateConfig(config);
-  }
 
   private _findFastestRpcFromLatencies(): string | null {
     try {
-      const validLatencies: Record<string, number> = Object.entries(this._latencies)
-        .filter(([key]) => key.startsWith(`${this._networkId}__`))
+      const validLatencies: Record<string, number> = Object.entries(this.latencies)
+        .filter(([key]) => key.startsWith(`${this.networkId}__`))
         .reduce(
           (acc, [key, value]) => {
             acc[key] = value;
@@ -497,6 +380,75 @@ export class RPCHandler {
     } catch (error) {
       this.log("error", "Failed to find fastest RPC", { er: String(error) });
       return null;
+    }
+  }
+
+  private _filterRpcs(networks: Rpc[], tracking: Tracking) {
+    const predicates: Record<Tracking, (rpc: Rpc) => boolean> = {
+      yes: () => true,
+      limited: (rpc) =>
+        typeof rpc !== "string" && (rpc.tracking === "limited" || rpc.tracking === "none"),
+      none: (rpc) => typeof rpc !== "string" && rpc.tracking === "none",
+    };
+
+    const pred = predicates[tracking];
+    return pred ? networks.filter(pred) : [];
+  }
+
+  private _initialize(config: HandlerConstructorConfig): void {
+    this.runtimeEnv = typeof window === "undefined" ? "node" : "browser";
+
+    /**
+     * Extract user injected custom RPCs (including localhost etc.)
+     */
+    let networkRpcsFromConfig: Rpc[] = config.settings?.networkRpcs || [];
+
+    if (networkRpcsFromConfig.length > 0) {
+      // If the network ID is a local development network, use local RPCs
+      if (this.networkId === "31337" || this.networkId === "1337") {
+        this.networkRpcs = [{ url: LOCAL_HOST }, { url: LOCAL_HOST_2 }];
+      } else if (this.networkRpcs?.length > 0) {
+        this.networkRpcs = [...this.networkRpcs, ...networkRpcsFromConfig];
+      } else {
+        this.networkRpcs = networkRpcsFromConfig;
+      }
+    }
+
+    this._updateConfig(config);
+  }
+
+  private _updateConfig(config: HandlerConstructorConfig): void {
+    if (config.proxySettings) {
+      this._proxySettings = {
+        ...this._proxySettings,
+        ...config.proxySettings,
+      };
+    }
+
+    if (config.settings) {
+      this.settings.cacheRefreshCycles =
+        config.settings.cacheRefreshCycles ?? this.settings.cacheRefreshCycles;
+      this.settings.rpcTimeout =
+        config.settings.rpcTimeout ?? this.settings.rpcTimeout;
+
+      if (config.settings.autoStorage) {
+        this.settings.autoStorage = true;
+        this.latencies = StorageService.getLatencies(this.runtimeEnv, this.networkId);
+        this.refreshLatencies = StorageService.getRefreshLatencies(this.runtimeEnv);
+      }
+    }
+  }
+
+  log(tier: PrettyLogsWithOk, message: string, metadata?: Metadata): void {
+    let logTier = this.settings.logTier;
+
+    if (logTier === "none") return;
+    if (tier === "fatal") throw new Error(message + JSON.stringify(metadata));
+    if (logTier === "verbose") this._logger?.log(tier, message, metadata);
+
+    if (logTier === tier && tier !== "none") {
+      const fn = tier === "ok" ? "info" : tier;
+      this._logger?.[fn](message, metadata);
     }
   }
 }
