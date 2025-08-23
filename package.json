@@ -27,6 +27,7 @@
     "postinstall": "git submodule update --init --recursive",
     "test:anvil": "npx tsx ./tests/anvil.ts",
     "test": "jest",
+    "bench:compare": "npx tsx benchmarks/compare-handlers.ts",
     "clean": "rm -rf dist"
   },
   "keywords": [

@@ -32,9 +32,10 @@ export function useHandler(networkId: number) {
     networkName:  null, // will default using the networkRpcs
     networkRpcs:  null, // e.g "https://mainnet.infura.io/..."
     runtimeRpcs:  null, // e.g "<networkId>__https://mainnet.infura.io/..." > "1__https://mainnet.infura.io/..."
-    autoStorage: true, // browser only, will store in localStorage
+    browserLocalStorage: true, // browser only, will store in localStorage
     cacheRefreshCycles: 10, // bad RPCs are excluded if they fail, this is how many cycles before they're re-tested
-    rpcTimeout: 1500, // when the RPCs are tested they are raced, this is the max time to allow for a response
+  rpcTimeout: 1500, // (latency test timeout) max time allowed when racing RPCs to measure latency
+  rpcCallTimeout: 10000, // (per-call timeout) hard cap for each individual JSON-RPC method invocation through the proxied provider
     tracking: "yes", // accepted values: "yes" | "limited" | "none". This is the data tracking status of the RPC, not this package.
     proxySettings: {
       retryCount: 3, // how many times we'll loop the list of RPCs retrying the request before failing
@@ -89,9 +90,18 @@ const requestResponse = await handler.security.consensusCall(reqPayload, "0.5");
 
 - See the full [config](types/handler.ts) object (optionally passed in the constructor) for more options
 
-- LocalStorage is not enabled by default, but can be enabled by passing `autoStorage: true` in the config object
+- LocalStorage is not enabled by default, but can be enabled by passing `browserLocalStorage: true` in the config object
 
 - Use the returned `JsonRpcProvider` object as you would normally, internally, any call you pass through it will be retried on the next fastest provider if it fails. It should only ever really throw due to user error or a network issue.
+
+### Timeouts Explained
+
+There are now TWO distinct timeout settings:
+
+1. `rpcTimeout` (latency benchmarking) – governs how long each candidate RPC is allowed to respond during the initial latency race / health checks. Slow or non-responsive endpoints beyond this window are excluded or penalized when determining the fastest provider.
+2. `rpcCallTimeout` (runtime call execution) – a per method-call ceiling applied to every provider invocation (initial attempt + each retry). If a call exceeds this duration it is aborted and the retry logic advances to the next RPC endpoint until retries are exhausted.
+
+These serve different phases: discovery vs. operational usage. Tune them independently (e.g. a small `rpcTimeout` like 1500ms to quickly classify fast endpoints, and a larger `rpcCallTimeout` like 10000ms for heavier methods such as eth_getLogs).
 
 ## Testing
 
