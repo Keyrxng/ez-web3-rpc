@@ -1,139 +1,172 @@
-# `@ubiquity-dao/rpc-handler`
+# Web3 RPC Handler
 
-## Why use this package?
+A small, pragmatic TypeScript helper for picking, using and cross‑checking multiple public (or private) Ethereum JSON‑RPC endpoints.
 
-- **No more slow RPCs**: No more slow RPCs, no more failed requests, no more headaches
-- **Fastest RPCs**: Returns the fastest RPC for a given network ID
-- **Fallback mechanism**: Retries failed method calls on the next fastest provider
-- **Retries failed method calls**: Retries failed method calls on the next fastest provider
-- **No more searching for RPCs**: No need to for an RPC URL again, just pass the network ID
-- **Fully configurable**: Configure the number of retries, retry delay, log tier and more
-- **Browser and Node.js support**: Can be used in both the browser and Node.js
-- **Local storage cache**: Stores the fastest RPCs for a given network ID in the browser's local storage
-- **Drop-in replacement**: No changes required to your existing codebase, just replace your current provider with the one returned by `RPCHandler.getFastestRpcProvider()`
-- **No tracking or analytics**: No additional tracking, data collection or analytics performed by this package beyond the specific public endpoints that support those features
+It does 4 things for you:
 
-## Installation
+1. Discovers & filters RPC URLs for a chain (plus any you inject) respecting your tracking/privacy preference.
+2. Measures them (block sync + a known contract bytecode probe) to pick an initial provider.
+3. Wraps the provider with latency‑ordered, batched retry logic (races fastest 3 at a time, with timeouts) so transient failures/rate limits hurt less.
+4. (Optional) Runs lightweight quorum / BFT style consensus checks across many RPCs when you really care about result integrity.
 
-```bash
-yarn add @ubiquity-dao/rpc-handler
-```
+No magic. Just a bit of glue you would otherwise rewrite.
 
-## Usage
-
-- Config options with null are optional, but still need to be passed as `null`
-
-```typescript
-import { RPCHandler, HandlerConstructorConfig } from "@ubiquity-dao/rpc-handler/";
-
-export function useHandler(networkId: number) {
-  const config: HandlerConstructorConfig = {
-    networkId: 100, // your chosen networkId
-    networkName:  null, // will default using the networkRpcs
-    networkRpcs:  null, // e.g "https://mainnet.infura.io/..."
-    runtimeRpcs:  null, // e.g "<networkId>__https://mainnet.infura.io/..." > "1__https://mainnet.infura.io/..."
-    browserLocalStorage: true, // browser only, will store in localStorage
-    cacheRefreshCycles: 10, // bad RPCs are excluded if they fail, this is how many cycles before they're re-tested
-  rpcTimeout: 1500, // (latency test timeout) max time allowed when racing RPCs to measure latency
-  rpcCallTimeout: 10000, // (per-call timeout) hard cap for each individual JSON-RPC method invocation through the proxied provider
-    tracking: "yes", // accepted values: "yes" | "limited" | "none". This is the data tracking status of the RPC, not this package.
-    proxySettings: {
-      retryCount: 3, // how many times we'll loop the list of RPCs retrying the request before failing
-      retryDelay: 100, // (ms) how long we'll wait before moving to the next RPC, best to keep this low
-      logTier: "ok", // |"info"|"error"|"debug"|"fatal"|"verbose"; set to "none" for no logs, null will default to "error", "verbose" will log all
-      logger: null, // null will default to PrettyLogs
-      strictLogs: true, // true, only the specified logTier will be logged and false all wll be logged.
-      moduleName?: "[UBQ RPC Handler]", // Can be omitted. this is the prefix for the logs.
-      disabled?: false, // Can be omitted. this will disable the proxy, requiring you to handle retry logic etc yourself.
-    }
-  };
-  // No RPCs are tested at this point
-  return new RPCHandler(config);
-}
-```
-
-- In your app:
-
-```typescript
-import { useHandler } from "./rpc-handler";
-const handler = useHandler(networkId);
-
-// Now the RPCs are tested
-app.provider = await handler.getFastestRpcProvider();
-```
-
-- Perform a consensus check:
-
-##### Note that this is intended for read-only operations, as it will make multiple requests to different RPCs to achieve a consensus on the response.
-
-```typescript
-const handler = new RPCHandler(config);
-
-const reqPayload: RequestPayload = {
-  jsonrpc: "2.0",
-  method: "eth_getBlockByNumber",
-  params: ["latest", false],
-  id: 1,
-  headers: {
-    "Content-Type": "application/json",
-  },
-};
-
-// This response is validated against N nodes before it's returned
-// in this case 50% of nodes need to agree otherwise it will fail and throw an error
-const requestResponse = await handler.security.consensusCall(reqPayload, "0.5");
-```
-
-#### Notes
-
-- The RPCs are not tested on instantiation, but are tested on each call to `handler.getFastestRpcProvider()` or `handler.testRpcPerformance()`
-
-- See the full [config](types/handler.ts) object (optionally passed in the constructor) for more options
-
-- LocalStorage is not enabled by default, but can be enabled by passing `browserLocalStorage: true` in the config object
-
-- Use the returned `JsonRpcProvider` object as you would normally, internally, any call you pass through it will be retried on the next fastest provider if it fails. It should only ever really throw due to user error or a network issue.
-
-### Timeouts Explained
-
-There are now TWO distinct timeout settings:
-
-1. `rpcTimeout` (latency benchmarking) – governs how long each candidate RPC is allowed to respond during the initial latency race / health checks. Slow or non-responsive endpoints beyond this window are excluded or penalized when determining the fastest provider.
-2. `rpcCallTimeout` (runtime call execution) – a per method-call ceiling applied to every provider invocation (initial attempt + each retry). If a call exceeds this duration it is aborted and the retry logic advances to the next RPC endpoint until retries are exhausted.
-
-These serve different phases: discovery vs. operational usage. Tune them independently (e.g. a small `rpcTimeout` like 1500ms to quickly classify fast endpoints, and a larger `rpcCallTimeout` like 10000ms for heavier methods such as eth_getLogs).
-
-## Testing
-
-1. Build the package:
+---
+## Install
 
 ```bash
-yarn build
+npm install web3-rpcs
+# or
+yarn add web3-rpcs
 ```
 
-2. In terminal A run the following command to start a local Anvil instance:
+Requires Node >= 20.10 (uses global fetch & AbortController).
 
-```bash
-yarn test:anvil
+---
+## Quick Start
+
+```ts
+import { RPCHandler } from 'web3-rpcs';
+
+const handler = new RPCHandler({
+  networkId: '1',                 // chain id as string for autocomplete (ships with 2k+ chains)
+});
+
+await handler.init(); 
+const provider = handler.getProvider(); 
+const block = await provider.send('eth_blockNumber', []); 
+console.log('block', parseInt(block));
+```
+---
+## Strategies
+
+- fastest (default): measure all candidates in parallel then pick the lowest latency among those that are in‑sync and return valid bytecode for a known contract (currently Permit2). Stores latencies for ordered retries.
+- firstHealthy: shuffle the list and pick the first endpoint that passes a single health probe (useful when you just need something alive quickly, maybe with fewer concurrent outbound requests).
+
+---
+## Consensus Calls (Optional)
+
+Some RPC methods (e.g. state reads right after a reorg, or endpoints behind different archive nodes) can disagree briefly. For critical reads you can ask a quorum of endpoints:
+
+```ts
+import type { JsonRpcRequest } from 'web3-rpcs/calls';
+
+const req: JsonRpcRequest = { jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 };
+const value = await handler.calls.consensus(req, '0.60', { concurrency: 5 });
+// requires >=60% identical responses among processed successes
 ```
 
-3. In terminal B run the following command to run the tests:
+Need to be more forgiving? Use BFT descent:
 
+```ts
+const majority = await handler.calls.bftConsensus(req, '0.90', '0.50');
+// Tries 90%, 85%, 80% ... down to 50% on the SAME collected result set.
+```
+
+Features:
+- Stable structural comparison (objects get JSON sorted by keys so different key order still matches).
+- Per‑endpoint cooldown after 429 / 5xx with exponential backoff so you do not keep hammering rate‑limited nodes.
+- Early abort (for basic consensus) once a quorum is mathematically unreachable or already satisfied.
+
+If you only have one RPC url, consensus will purposely throw (can’t form a quorum).
+
+---
+## Retry Wrapper
+
+Every `provider.send` (or any method off the underlying `JsonRpcProvider`) is proxied:
+- Keeps an ordered list: fastest -> slowest from the last measurement.
+- Races up to 3 endpoints at a time (batch) for the call.
+- On batch failure backs off (`retryDelay`) then moves to next batch.
+- Loops `retryCount` times through all batches before throwing.
+- Adds per call hard timeout (`rpcCallTimeout`) so a hung node doesn’t stall your entire request path.
+
+You still get a normal `JsonRpcProvider` interface.
+
+---
+## Configuration Summary
+
+The only required param is the `NetworkId`.
+
+HandlerConstructorConfig (abridged):
+- `networkId`: string (chain id)
+- `strategy`?: 'fastest' | 'firstHealthy'
+- `settings.tracking`: 'none' | 'limited' | 'yes' (filters providers by declared tracking footprint)
+- `settings.networkRpcs`: custom `Rpc[]` you inject (localhost, private, paid)
+- `settings.rpcTimeout`: ms for initial latency tests
+- `settings.browserLocalStorage`: persist latencies in the browser
+- `settings.logLevel`: 'none' | 'error' | 'info' | 'debug' | 'verbose'
+- `proxySettings.retryCount / retryDelay / rpcCallTimeout`: retry behavior
+
+Rpc shape:
+```ts
+{ url: string; tracking?: 'none' | 'limited' | 'yes'; trackingDetails?: string; isOpenSource?: boolean; }
+```
+
+---
+## Privacy / Tracking Filter
+
+Public RPC lists sometimes include commercial endpoints that collect more telemetry. You choose your comfort level via `settings.tracking`:
+- none: only endpoints explicitly marked as "none"
+- limited: allows those marked "limited" or "none"
+- yes: no filtering
+
+This reduces accidental leakage for highly sensitive tooling and is especially useful when prototyping in browsers.
+
+---
+## Persisted Latencies (Browser Only)
+
+If `browserLocalStorage: true`, the latency map is stored under key `rpcLatencies-<networkId>` so reloads don’t trigger a full warmup every time. Fallback to in‑memory otherwise.
+
+
+## Error Handling
+
+Common throws:
+- Provider not initialized (call `init` first)
+- No RPC available / fastest not found (all probes failed / timed out)
+- Consensus: "No RPCs available", "Only one RPC available", or quorum failure messages
+- Retry exhaustion after all batches & cycles fail
+
+All retries & consensus failures emit structured logs when `logLevel` >= appropriate threshold.
+
+---
+## Logging
+
+A tiny logger with levels & symbols. Set `logLevel` to `none` in production if you centralize logs elsewhere. `verbose` sprays everything (including per attempt debug). `ok` internal level is normalized to `info` for output.
+
+---
+## Contributing
+
+Open to PRs that keep the surface minimal.
+
+Clone, install, test:
 ```bash
+yarn install
 yarn test
 ```
 
-## Say goodbye to slow RPCs
+Lint & format:
+```bash
+yarn format
+```
 
-This packages leverages [Chainlist's](https://github.com/DefiLlama/chainlist) network RPC list to return the lowest latency provider from the list for any given network ID. Creating a runtime/local storage cache of the fastest RPCs, it can be used in both the browser and Node.js.
+Benchmarks (optional local anvil setup required):
+```bash
+yarn bench:compare
+```
 
-By default, it performs as an abstraction layer for the Web3 developer by having built-in failed method call retries,
-bad endpoint exclusion and a cache of the fastest RPCs for a given network ID. It serves as a drop-in replacement for any `JsonRpcProvider` and can be extended to handle custom RPCs, chains and more.
+---
+## License
 
-By routing requests through this package, it ensures the lowest latency for your users, while also providing a fallback mechanism for when the fastest provider fails. As even the best of nodes can fail, it retries failed method calls on the next fastest provider and so on until it succeeds or until your custom breakpoints are reached. With the ability to configure the number of retries, retry delay, log tier, breakpoints and more, it can be tailored to your specific needs.
+MIT
 
-There is no additional tracking, data collection or analytics performed by this package beyond the specific public endpoints that support those features. These will be made filterable in the future. Calls are made directly to the RPCs and the only data stored is the `Record` of RPCs for a given network ID, which can be stored in the browser's local storage for faster retrieval.
+---
+## FAQ (Quick)
 
-No changes are required to your existing codebase, simply replace your current provider with the one returned by `RPCHandler.getFastestRpcProvider()` and you're good to go. While all attempts are made to ensure the fastest provider is always used, it's important to note that the fastest provider can change over time, so it's recommended to call `RPCHandler.getFastestRpcProvider()` at the start of your app or at regular intervals. Also, it is possible that all providers fail, in which case the package will throw an error.
+Q: Write requests safe behind retry race?  
+A: Nonce & chain rules make duplicated state changes unlikely; still, consensus helpers are read‑oriented.
 
-No more slow RPCs, no more failed requests, no more headaches.
+Q: Can I plug my own selection strategy?  
+A: Not yet but I welcome new feature requests.
+
+---
+Plain, small, dependency‑light. Use what you need, ignore the rest.
