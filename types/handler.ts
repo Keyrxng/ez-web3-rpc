@@ -99,14 +99,3 @@ export type Rpc = {
   isOpenSource?: boolean;
 };
 
-export function getRpcUrls(rpcs: Rpc[]) {
-  const urls: string[] = [];
-  rpcs.forEach((rpc) => {
-    if (typeof rpc == "string") {
-      urls.push(rpc);
-    } else {
-      urls.push(rpc.url);
-    }
-  });
-  return urls;
-}

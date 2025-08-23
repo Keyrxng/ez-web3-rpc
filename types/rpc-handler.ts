@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { LOCAL_HOST, networkRpcs, networkIds, LOCAL_HOST_2 } from "./constants";
-import { HandlerConstructorConfig, NetworkId, NetworkName, Rpc, Tracking, getRpcUrls } from "./handler";
+import { HandlerConstructorConfig, NetworkId, NetworkName, Rpc, Tracking} from "./handler";
 import { Metadata, PrettyLogs, PrettyLogsWithOk } from "./logs";
 import { RPCService } from "./rpc-service";
 import { StorageService } from "./storage-service";
@@ -13,6 +13,18 @@ function shuffleArray(array: object[]) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
+}
+
+export function getRpcUrls(rpcs: Rpc[]) {
+  const urls: string[] = [];
+  rpcs.forEach((rpc) => {
+    if (typeof rpc == "string") {
+      urls.push(rpc);
+    } else {
+      urls.push(rpc.url);
+    }
+  });
+  return urls;
 }
 
 export class RPCHandler {
@@ -51,20 +63,6 @@ export class RPCHandler {
     this._networkName = networkIds[this._networkId];
 
     this._initialize(config);
-    this.log.bind(this);
-    this.metadataMaker.bind(this);
-    this.createProviderProxy.bind(this);
-    this.getProvider.bind(this);
-    this.getFastestRpcProvider.bind(this);
-    this.getLatencies.bind(this);
-    this.getRefreshLatencies.bind(this);
-    this.getCacheRefreshCycles.bind(this);
-    this.getRuntimeRpcs.bind(this);
-    this.getNetworkId.bind(this);
-    this.getNetworkName.bind(this);
-    this.getNetworkRpcs.bind(this);
-    this.testRpcPerformance.bind(this);
-    this.getFirstAvailableRpcProvider.bind(this);
     this._rpcService = new RPCService(this);
     this.security = new Security(this, this._rpcService);
   }
