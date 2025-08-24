@@ -1,5 +1,5 @@
 import { measureRpcs } from '../performance/measure';
-import { Rpc } from '../../types/handler';
+import { Rpc } from '../..';
 
 // Shuffle utility
 function shuffle<T>(arr: T[]): T[] {

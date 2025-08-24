@@ -1,5 +1,5 @@
-import { networkRpcs } from '../../types/constants';
-import { Rpc, Tracking } from '../../types/handler';
+import { networkRpcs } from '../constants';
+import { Rpc, Tracking } from '../..';
 import { filterRpcs } from './filterRpcs';
 
 export function selectBaseRpcSet(networkId: string, tracking: Tracking, injected: Rpc[]): Rpc[] {

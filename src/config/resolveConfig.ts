@@ -1,4 +1,4 @@
-import { HandlerConstructorConfig, Tracking, Rpc, NetworkId } from '../../types/handler';
+import { HandlerConstructorConfig, Tracking, Rpc, NetworkId } from '../..';
 
 export interface NormalizedConfig {
   /** The network ID to use for RPC calls */

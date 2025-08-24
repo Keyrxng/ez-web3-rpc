@@ -1,5 +1,5 @@
 import { appendFile, writeFile } from "fs/promises";
-import { BlockExplorer, NativeToken } from "../types/handler";
+import { BlockExplorer, NativeToken } from "..";
 
 /**
  * This produces dynamic types and constants for:

@@ -1,5 +1,5 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Rpc, RpcHandlerOptions, Strategy } from '../types/handler';
+import { Rpc, RpcHandlerOptions, Strategy } from '..';
 import { resolveConfig, NormalizedConfig } from './config/resolveConfig';
 import { selectBaseRpcSet } from './rpc/selectBaseRpcSet';
 import { getFastest } from './strategy/getFastest';

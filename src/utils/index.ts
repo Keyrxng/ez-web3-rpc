@@ -1,6 +1,6 @@
 import { NETWORK_FAUCETS } from "../../dynamic";
-import { networkIds, networkNames, networkExplorers, networkRpcs, networkCurrencies } from "../../types/constants";
-import { NetworkId, NetworkName } from "../../types/handler";
+import { networkIds, networkNames, networkExplorers, networkRpcs, networkCurrencies } from "../constants";
+import { NetworkId, NetworkName } from "../..";
 
 function getNetworkName(networkId: NetworkId) {
   const networkName = networkIds[networkId];
@@ -90,7 +90,6 @@ function pruneDynamicData(networkId: NetworkId) {
     }
   }
 }
-
 
 export {
   pruneDynamicData,

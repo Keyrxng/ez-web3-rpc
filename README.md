@@ -1,18 +1,33 @@
-# Web3 RPC Handler
+# web3-rpcs — pragmatic RPC tooling for EVM stacks
 
-A small, pragmatic TypeScript helper for picking, using and cross‑checking multiple public (or private) Ethereum JSON‑RPC endpoints.
+[![providers](https://img.shields.io/badge/Providers-4719-blue)](https://www.npmjs.com/package/web3-rpcs) [![chains](https://img.shields.io/badge/Chains-2332-brightgreen)](https://www.npmjs.com/package/web3-rpcs)
 
-It does 4 things for you:
+🚀 Ready out of the box — 4,719 RPC providers across 2,332 chains
 
-1. Discovers & filters RPC URLs for a chain (plus any you inject) respecting your tracking/privacy preference.
-2. Measures them (block sync + a known contract bytecode probe) to pick an initial provider.
-3. Wraps the provider with latency‑ordered, batched retry logic (races fastest 3 at a time, with timeouts) so transient failures/rate limits hurt less.
-4. (Optional) Runs lightweight quorum / BFT style consensus checks across many RPCs when you really care about result integrity.
+Small, pragmatic helpers to make working with Ethereum (Web3) JSON-RPC providers less tedious.
 
-No magic. Just a bit of glue you would otherwise rewrite.
+If your dapp, CI or infra depends on reliable chain reads/writes, this library helps you spend less time chasing flaky RPCs and copy/pasting from chainlist.
 
----
+Why this exists:
+- You shouldn't need to manually curate lists of public RPC URLs or rewrite retry/consensus logic for every project.
+- This library keeps those concerns isolated: discover, measure, and wrap providers so your code sees a single stable, latency-ordered provider.
+
+What you'll get:
+- Fewer production incidents from transient RPC failures — calls are raced and retried in an orderly way.
+- Faster warmup and more consistent latency because the handler prefers endpoints that proved faster for your network.
+- Safer reads for critical checks — optional consensus helpers let you compare multiple endpoints before trusting a value.
+- Minimal cognitive overhead — sensible defaults so you can get a working provider in seconds and tweak only if needed.
+
+If that sounds useful, the rest is small glue to make it simple to adopt.
+
+Badges
+[![npm version](https://img.shields.io/npm/v/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
+[![npm downloads](https://img.shields.io/npm/dm/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
+[![license](https://img.shields.io/npm/l/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
+
 ## Install
+
+Install like any other npm package:
 
 ```bash
 npm install web3-rpcs
@@ -22,151 +37,71 @@ yarn add web3-rpcs
 
 Requires Node >= 20.10 (uses global fetch & AbortController).
 
----
-## Quick Start
+## Quick start
+
+This shows the minimal path from nothing to an RPC you can call.
 
 ```ts
 import { RPCHandler } from 'web3-rpcs';
 
-const handler = new RPCHandler({
-  networkId: '1',                 // chain id as string for autocomplete (ships with 2k+ chains)
-});
-
-await handler.init(); 
-const provider = handler.getProvider(); 
-const block = await provider.send('eth_blockNumber', []); 
+const handler = new RPCHandler({ networkId: '1' });
+await handler.init();
+const provider = handler.getProvider();
+const block = await provider.send('eth_blockNumber', []);
 console.log('block', parseInt(block));
 ```
----
-## Strategies
 
-- fastest (default): measure all candidates in parallel then pick the lowest latency among those that are in‑sync and return valid bytecode for a known contract (currently Permit2). Stores latencies for ordered retries.
-- firstHealthy: shuffle the list and pick the first endpoint that passes a single health probe (useful when you just need something alive quickly, maybe with fewer concurrent outbound requests).
+That's it — you now have a provider that prefers healthy, low-latency endpoints and will retry intelligently on transient failures.
 
----
-## Consensus Calls (Optional)
+## When to use it
 
-Some RPC methods (e.g. state reads right after a reorg, or endpoints behind different archive nodes) can disagree briefly. For critical reads you can ask a quorum of endpoints:
+- CI jobs validating blocks or state where a single flaky RPC would cause false negatives.
+- Small services that can't afford bespoke provider orchestration but need reliable reads.
+- Local tooling and reporters that want consistent latency characteristics without manual tuning.
 
-```ts
-import type { JsonRpcRequest } from 'web3-rpcs/calls';
+## Core ideas (short)
 
-const req: JsonRpcRequest = { jsonrpc: '2.0', method: 'eth_blockNumber', params: [], id: 1 };
-const value = await handler.calls.consensus(req, '0.60', { concurrency: 5 });
-// requires >=60% identical responses among processed successes
-```
+- Measure: probe candidates and prefer endpoints that are in-sync and fast.
+- Wrap: proxy provider calls so they race a small batch of endpoints and fall back cleanly.
+- Consensus (opt-in): compare multiple successful responses for reads you can't blindly trust.
 
-Need to be more forgiving? Use BFT descent:
+## Configuration highlights
 
-```ts
-const majority = await handler.calls.bftConsensus(req, '0.90', '0.50');
-// Tries 90%, 85%, 80% ... down to 50% on the SAME collected result set.
-```
+Only `networkId` is required. Defaults are conservative so you get something useful quickly.
 
-Features:
-- Stable structural comparison (objects get JSON sorted by keys so different key order still matches).
-- Per‑endpoint cooldown after 429 / 5xx with exponential backoff so you do not keep hammering rate‑limited nodes.
-- Early abort (for basic consensus) once a quorum is mathematically unreachable or already satisfied.
+- strategy: pick endpoints (default `fastest`) or choose `firstHealthy` for faster initial success.
+- settings.tracking: filter endpoints by declared tracking level (`none` / `limited` / `yes`).
+- settings.networkRpcs: add custom/private URLs (useful for paid or local nodes).
+- proxySettings.rpcCallTimeout / retryCount / retryDelay: tune retry behavior when necessary.
 
-If you only have one RPC url, consensus will purposely throw (can’t form a quorum).
+For advanced details, the types and options are small and documented in the source.
 
----
-## Retry Wrapper
+## Safety and privacy notes
 
-Every `provider.send` (or any method off the underlying `JsonRpcProvider`) is proxied:
-- Keeps an ordered list: fastest -> slowest from the last measurement.
-- Races up to 3 endpoints at a time (batch) for the call.
-- On batch failure backs off (`retryDelay`) then moves to next batch.
-- Loops `retryCount` times through all batches before throwing.
-- Adds per call hard timeout (`rpcCallTimeout`) so a hung node doesn’t stall your entire request path.
+- The library respects declared tracking metadata on endpoints so you can avoid endpoints that advertise heavy telemetry.
+- Consensus helpers are designed for reads; they intentionally won't try to form a quorum from only a single RPC.
 
-You still get a normal `JsonRpcProvider` interface.
+## Troubleshooting & errors
 
----
-## Configuration Summary
+Common situations you'll see (and what they mean):
+- "Provider not initialized": call `init()` before using the handler.
+- "No RPC available": all probes timed out or failed — check your network/override RPCs.
+- Retry exhaustion: all batches failed after configured retries.
 
-The only required param is the `NetworkId`.
+Logs are deliberately conservative; set `settings.logLevel` to `debug` or `verbose` only while diagnosing.
 
-HandlerConstructorConfig (abridged):
-- `networkId`: string (chain id)
-- `strategy`?: 'fastest' | 'firstHealthy'
-- `settings.tracking`: 'none' | 'limited' | 'yes' (filters providers by declared tracking footprint)
-- `settings.networkRpcs`: custom `Rpc[]` you inject (localhost, private, paid)
-- `settings.rpcTimeout`: ms for initial latency tests
-- `settings.browserLocalStorage`: persist latencies in the browser
-- `settings.logLevel`: 'none' | 'error' | 'info' | 'debug' | 'verbose'
-- `proxySettings.retryCount / retryDelay / rpcCallTimeout`: retry behavior
-
-Rpc shape:
-```ts
-{ url: string; tracking?: 'none' | 'limited' | 'yes'; trackingDetails?: string; isOpenSource?: boolean; }
-```
-
----
-## Privacy / Tracking Filter
-
-Public RPC lists sometimes include commercial endpoints that collect more telemetry. You choose your comfort level via `settings.tracking`:
-- none: only endpoints explicitly marked as "none"
-- limited: allows those marked "limited" or "none"
-- yes: no filtering
-
-This reduces accidental leakage for highly sensitive tooling and is especially useful when prototyping in browsers.
-
----
-## Persisted Latencies (Browser Only)
-
-If `browserLocalStorage: true`, the latency map is stored under key `rpcLatencies-<networkId>` so reloads don’t trigger a full warmup every time. Fallback to in‑memory otherwise.
-
-
-## Error Handling
-
-Common throws:
-- Provider not initialized (call `init` first)
-- No RPC available / fastest not found (all probes failed / timed out)
-- Consensus: "No RPCs available", "Only one RPC available", or quorum failure messages
-- Retry exhaustion after all batches & cycles fail
-
-All retries & consensus failures emit structured logs when `logLevel` >= appropriate threshold.
-
----
-## Logging
-
-A tiny logger with levels & symbols. Set `logLevel` to `none` in production if you centralize logs elsewhere. `verbose` sprays everything (including per attempt debug). `ok` internal level is normalized to `info` for output.
-
----
 ## Contributing
 
-Open to PRs that keep the surface minimal.
+Patches welcome. If you open a PR, keep the surface area small and tests passing.
 
-Clone, install, test:
+Quick dev commands:
+
 ```bash
 yarn install
+yarn test:anvil # required in separate terminal
 yarn test
 ```
 
-Lint & format:
-```bash
-yarn format
-```
-
-Benchmarks (optional local anvil setup required):
-```bash
-yarn bench:compare
-```
-
----
 ## License
 
 MIT
-
----
-## FAQ (Quick)
-
-Q: Write requests safe behind retry race?  
-A: Nonce & chain rules make duplicated state changes unlikely; still, consensus helpers are read‑oriented.
-
-Q: Can I plug my own selection strategy?  
-A: Not yet but I welcome new feature requests.
-
----
-Plain, small, dependency‑light. Use what you need, ignore the rest.

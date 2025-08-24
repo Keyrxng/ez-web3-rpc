@@ -16,3 +16,4 @@ test-dashboard.md
 *.Identifier
 .vscode
 generated-chains.json
+scripts/smoke

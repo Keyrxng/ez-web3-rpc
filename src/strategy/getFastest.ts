@@ -1,6 +1,6 @@
 import { measureRpcs } from '../performance/measure';
 import { pickFastest } from '../performance/pickFastest';
-import { Rpc } from '../../types/handler';
+import { Rpc } from '../..';
 
 export async function getFastest(rpcs: Rpc[], opts: { timeout: number }) {
   const { latencies, checkResults } = await measureRpcs(rpcs, { timeout: opts.timeout });

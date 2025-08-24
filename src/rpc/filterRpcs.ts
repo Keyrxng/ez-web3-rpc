@@ -1,4 +1,4 @@
-import { Rpc, Tracking } from '../../types/handler';
+import { Rpc, Tracking } from '../..';
 
 // Filter RPCs based on tracking preference
 export function filterRpcs(rpcs: Rpc[], tracking: Tracking): Rpc[] {

@@ -1,5 +1,5 @@
-import { PERMIT2_ADDRESS } from '../../types/constants';
-import { Rpc } from '../../types/handler';
+import { PERMIT2_ADDRESS } from '../constants';
+import { Rpc } from '../..';
 
 export type LatencyMap = { [url: string]: number; }
 
