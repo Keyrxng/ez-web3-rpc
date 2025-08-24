@@ -2,6 +2,7 @@ import { networkCurrencies, networkExplorers, networkRpcs } from "./src/constant
 import { CHAINS_IDS, EXTRA_RPCS } from "./dynamic";
 import { LogLevel } from "./src/logging/logger"
 
+export { CHAINS_IDS } from "./dynamic"
 export * from "./src/index"
 
 export type Strategy = 'fastest' | 'firstHealthy';
