@@ -25,8 +25,8 @@ export class RPCHandler {
     constructor(opts: RpcHandlerOptions) {
         this.config = resolveConfig(opts);
         this.strategy = opts.strategy || 'fastest';
-    // Note: selection of base RPCs happens after optional pruning in init.
-    this.rpcs = selectBaseRpcSet(this.config.networkId, this.config.tracking, this.config.injectedRpcs);
+        // Note: selection of base RPCs happens after optional pruning in init.
+        this.rpcs = selectBaseRpcSet(this.config.networkId, this.config.tracking, this.config.injectedRpcs);
         this.logger = this.config.settings.logLevel === 'none' ? new NoopLogger() : new BasicLogger(this.config.settings.logLevel as any);
         if (this.config.settings.browserLocalStorage && typeof localStorage !== 'undefined') {
             try {
@@ -37,7 +37,7 @@ export class RPCHandler {
                 }
             } catch {/* ignore */ }
         }
-    this.calls = new RpcCalls(this);
+        this.calls = new RpcCalls(this);
     }
 
     async init(): Promise<void> {
@@ -133,7 +133,7 @@ export class RPCHandler {
     private _log(level: string, message: string, metadata?: any) {
         const allowed = this.config.settings.logLevel;
         if (allowed === 'none') return;
-        if (allowed !== 'verbose' && level === 'verbose') return;
+        if (level !== allowed) return;
         this.logger.log(level === 'ok' ? 'info' : level as any, message, metadata);
     }
 }

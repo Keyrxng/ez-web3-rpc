@@ -23,7 +23,7 @@ export class BasicLogger implements Logger {
     if (this.min === 'verbose') return true;
     const order: LogLevel[] = ['error','info','debug','verbose'];
     if (level === 'ok') level = 'info';
-    return order.indexOf(level as any) <= order.indexOf(this.min as any);
+    return order.indexOf(level) <= order.indexOf(this.min);
   }
   log(level: LogLevel, message: string, meta?: any): void {
     if (!this._should(level)) return;
