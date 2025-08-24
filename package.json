@@ -1,6 +1,6 @@
 {
   "name": "@keyrxng/ez-web3-rpc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Pragmatic RPC tooling for EVM stacks — discover, measure, and wrap JSON-RPC providers with latency-aware selection, retries, and optional consensus helpers.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
