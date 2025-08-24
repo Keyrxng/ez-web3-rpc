@@ -30,9 +30,9 @@ Badges
 Install like any other npm package:
 
 ```bash
-npm install ez-web3-rpcs
+npm install @keyrxng/ez-web3-rpc
 # or
-yarn add ez-web3-rpcs
+yarn add @keyrxng/ez-web3-rpc
 ```
 
 Requires Node >= 20.10 (uses global fetch & AbortController).
@@ -42,7 +42,7 @@ Requires Node >= 20.10 (uses global fetch & AbortController).
 This shows the minimal path from nothing to an RPC you can call.
 
 ```ts
-import { RPCHandler } from 'ez-web3-rpcs';
+import { RPCHandler } from '@keyrxng/ez-web3-rpc';
 
 const handler = new RPCHandler({ networkId: '1' });
 await handler.init();
