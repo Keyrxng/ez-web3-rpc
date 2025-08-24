@@ -1,6 +1,5 @@
 import { RPCHandler } from '../src';
-import type { NetworkId } from '../types/handler';
-import type { RpcHandlerOptions } from '../src/rpc-handler';
+import type { NetworkId, RpcHandlerOptions } from '../types/handler';
 
 // Requires Anvil running at 127.0.0.1:8545 (forked so permit2 code is present)
 

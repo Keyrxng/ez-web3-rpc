@@ -1,28 +1,24 @@
 import { RPCHandler } from '../src';
-import type { RpcHandlerOptions } from '../src/rpc-handler';
+import { RpcHandlerOptions } from '../types/handler';
 
 // NOTE: These tests focus on constructor + config normalization + tracking filter logic.
 // Network calls for latency measurement are NOT executed here to keep tests deterministic.
-// Integration/latency tests can be added with mocked axios/fetch if needed.
 
 describe('RPCHandler (src)', () => {
   function makeConfig(partial: Partial<RpcHandlerOptions> = {}): RpcHandlerOptions {
     return {
       networkId: '31337',
-      providerLib: 'ethers',
       strategy: 'fastest',
       settings: {
         tracking: partial.settings?.tracking ?? 'none',
         networkRpcs: partial.settings?.networkRpcs,
         browserLocalStorage: false,
         rpcTimeout: 10,
-        cacheRefreshCycles: 2,
         logLevel: 'none',
       },
       proxySettings: { retryCount: 1, retryDelay: 1, rpcCallTimeout: 50 },
-      injectedRpcs: undefined as any, // placeholder (not part of public interface, ignore TS),
       ...partial,
-    } as any;
+    }
   }
 
   it('constructs and exposes injected RPC list filtered by tracking', () => {

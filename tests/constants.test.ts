@@ -1,5 +1,6 @@
 import { NetworkId, NetworkName, NativeToken } from '../types/handler';
-import { getNetworkId, getNetworkName, networkCurrencies, networkExplorers, networkIds, networkNames, getNetworkCurrency, getNetworkData, getNetworkExplorer } from '../types/constants';
+import { networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, NETWORK_FAUCETS } from '../types/constants';
+import { getNetworkCurrency, getNetworkData, getNetworkExplorer, getNetworkFaucets, getNetworkId, getNetworkName, getNetworkRpcs, pruneDynamicData} from "../src/utils"
 
 describe('Constants (src)', () => {
   const netIds = ['1','100','56','80002','137','25'] as NetworkId[];
@@ -46,5 +47,58 @@ describe('Constants (src)', () => {
       const urls2 = getNetworkExplorer(id).map(e => e.url);
       expect(urls2).toContain(expectedExplorer[id]);
     });
+  });
+
+  it('getNetworkFaucets + NETWORK_FAUCETS', () => {
+    // known net with faucets (ropsten = 3)
+    const ropsten = '3' as NetworkId;
+    expect(NETWORK_FAUCETS[ropsten]).toEqual(getNetworkFaucets(ropsten));
+
+    // known net with no faucets (mainnet = 1)
+    const mainnet = '1' as NetworkId;
+    expect(NETWORK_FAUCETS[mainnet]).toEqual([]);
+    expect(getNetworkFaucets(mainnet)).toEqual([]);
+
+    // invalid id returns empty array
+    // (function returns [] when no entry exists)
+    // cast to any to simulate unknown numeric id
+    expect(getNetworkFaucets(Number.MAX_SAFE_INTEGER as any)).toEqual([]);
+  });
+
+  it('getNetworkRpcs valid + invalid', () => {
+    const target = '80002' as NetworkId; // amoy
+    // networkRpcs stores { rpcs: Rpc[] }
+    expect(networkRpcs[target].rpcs).toEqual(getNetworkRpcs(target).rpcs);
+
+    // unknown id returns []
+    expect(getNetworkRpcs(Number.MAX_SAFE_INTEGER as any)).toEqual([]);
+  });
+
+  it('pruneDynamicData keeps only the target id in dynamic maps', () => {
+    const TARGET = '80002' as NetworkId;
+
+    // load fresh modules to avoid using already-imported references
+    jest.resetModules();
+    // require ensures we get the current module objects to mutate
+    const utils = require('../src/utils');
+    const constants = require('../types/constants');
+
+    // Sanity: constants should contain many entries before pruning
+    expect(Object.keys(constants.networkIds).length).toBeGreaterThan(1);
+
+    utils.pruneDynamicData(TARGET);
+
+    // After pruning, only the target key should remain in these maps
+    expect(Object.keys(constants.networkIds)).toEqual([TARGET]);
+    // networkNames maps name->id: all remaining values should equal TARGET
+    expect(Object.values(constants.networkNames)).toEqual([TARGET]);
+    expect(Object.keys(constants.networkRpcs)).toEqual([TARGET]);
+    expect(Object.keys(constants.networkExplorers)).toEqual([TARGET]);
+    expect(Object.keys(constants.networkCurrencies)).toEqual([TARGET]);
+
+    // NETWORK_FAUCETS is imported from dynamic and should be pruned as well
+    if (constants.NETWORK_FAUCETS && typeof constants.NETWORK_FAUCETS === 'object') {
+      expect(Object.keys(constants.NETWORK_FAUCETS)).toEqual([TARGET]);
+    }
   });
 });

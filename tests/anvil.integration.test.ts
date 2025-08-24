@@ -2,9 +2,7 @@ import { RPCHandler } from '../src';
 // Integration test expects an Anvil instance at 127.0.0.1:8545.
 // No fallback or skip logic; will fail fast if Anvil isn't running.
 
-import type { NetworkId } from '../types/handler';
-
-import type { RpcHandlerOptions } from '../src/rpc-handler';
+import type { NetworkId, RpcHandlerOptions } from '../types/handler';
 
 const baseConfig: Omit<RpcHandlerOptions, 'strategy'> = {
   networkId: '31337' as NetworkId,
