@@ -1,6 +1,6 @@
-# ez-web3-rpcs — pragmatic RPC tooling for EVM stacks
+# ez-web3-rpc — pragmatic RPC tooling for EVM stacks
 
-[![providers](https://img.shields.io/badge/Providers-4719-blue)](https://www.npmjs.com/package/ez-web3-rpcs) [![chains](https://img.shields.io/badge/Chains-2332-brightgreen)](https://www.npmjs.com/package/ez-web3-rpcs)
+[![providers](https://img.shields.io/badge/Providers-4719-blue)](https://www.npmjs.com/package/@keyrxng/ez-web3-rpc) [![chains](https://img.shields.io/badge/Chains-2332-brightgreen)](https://www.npmjs.com/package/@keyrxng/ez-web3-rpc)
 
 🚀 Ready out of the box — 4,719 RPC providers across 2,332 chains
 
@@ -21,9 +21,9 @@ What you'll get:
 If that sounds useful, the rest is small glue to make it simple to adopt.
 
 Badges
-[![npm version](https://img.shields.io/npm/v/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
-[![npm downloads](https://img.shields.io/npm/dm/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
-[![license](https://img.shields.io/npm/l/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
+[![npm version](https://img.shields.io/npm/v/@keyrxng/ez-web3-rpc.svg)](https://www.npmjs.com/package/@keyrxng/ez-web3-rpc)
+[![npm downloads](https://img.shields.io/npm/dm/@keyrxng/ez-web3-rpc.svg)](https://www.npmjs.com/package/@keyrxng/ez-web3-rpc)
+[![license](https://img.shields.io/npm/l/@keyrxng/ez-web3-rpc.svg)](https://www.npmjs.com/package/@keyrxng/ez-web3-rpc)
 
 ## Install
 
