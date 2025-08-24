@@ -2,6 +2,12 @@ import { networkCurrencies, networkExplorers, networkRpcs } from "./constants";
 import { CHAINS_IDS, EXTRA_RPCS } from "../dynamic";
 import { LogLevel } from "../src/logging/logger"
 
+export type Strategy = 'fastest' | 'firstHealthy';
+
+export type RpcHandlerOptions = HandlerConstructorConfig & {
+    strategy?: Strategy;
+}
+
 export type BlockExplorer = {
   name: string;
   url: string;
@@ -70,6 +76,12 @@ export type HandlerConstructorConfig = {
      * E.G. `https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID`
      */
     networkRpcs?: Rpc[];
+    /**
+     * When true, prune the in-memory dynamic network data (chain lists, RPCs,
+     * explorers, currencies, faucets) down to only the `networkId` provided
+     * when the handler is initialized. Defaults to false.
+     */
+    pruneUnusedData?: boolean;
     /**
      * BROWSER ONLY
      *
