@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import type { NetworkId } from '../types/handler';
+import type { NetworkId } from '../';
 
 let call = 0;
 jest.mock('../src/strategy/getFastest', () => ({

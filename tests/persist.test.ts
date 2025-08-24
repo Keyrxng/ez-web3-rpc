@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import type { NetworkId } from '../types/handler';
+import type { NetworkId } from '../';
 
 // Mock getFastest to control latencies and fastest
 jest.mock('../src/strategy/getFastest', () => ({

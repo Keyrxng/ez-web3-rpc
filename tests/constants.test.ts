@@ -1,5 +1,6 @@
-import { NetworkId, NetworkName, NativeToken } from '../types/handler';
-import { networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, NETWORK_FAUCETS } from '../types/constants';
+import { NetworkId, NetworkName, NativeToken } from '../';
+import { NETWORK_FAUCETS } from '../dynamic';
+import { networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs } from '../src/constants';
 import { getNetworkCurrency, getNetworkData, getNetworkExplorer, getNetworkFaucets, getNetworkId, getNetworkName, getNetworkRpcs, pruneDynamicData} from "../src/utils"
 
 describe('Constants (src)', () => {
@@ -81,7 +82,7 @@ describe('Constants (src)', () => {
     jest.resetModules();
     // require ensures we get the current module objects to mutate
     const utils = require('../src/utils');
-    const constants = require('../types/constants');
+    const constants = require('../src/constants');
 
     // Sanity: constants should contain many entries before pruning
     expect(Object.keys(constants.networkIds).length).toBeGreaterThan(1);

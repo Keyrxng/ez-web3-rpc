@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import { LOCAL_HOST } from '../types/constants';
+import { LOCAL_HOST } from '../src/constants';
 import * as fastest from '../src/strategy/getFastest';
 import * as firstHealthy from '../src/strategy/getFirstHealthy';
 

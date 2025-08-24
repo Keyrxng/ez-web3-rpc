@@ -1,4 +1,4 @@
-import { NetworkId } from '../types/handler';
+import { NetworkId } from '../';
 
 describe('pruneDynamicData', () => {
   const TARGET: NetworkId = '1';
@@ -9,7 +9,7 @@ describe('pruneDynamicData', () => {
   });
 
   it('removes all dynamic entries except the provided networkId', () => {
-    const constants = require('../types/constants');
+    const constants = require('../src/constants');
     const pruneDynamicData = require('../src/utils').pruneDynamicData;
 
     // sanity: ensure multiple entries exist before pruning

@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import type { NetworkId } from '../types/handler';
+import type { NetworkId } from '../';
 import * as firstHealthyMod from '../src/strategy/getFirstHealthy';
 
 describe('RPCHandler strategy=firstHealthy', () => {

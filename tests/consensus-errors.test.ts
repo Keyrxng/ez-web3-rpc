@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import { LOCAL_HOST, LOCAL_HOST_2 } from '../types/constants';
+import { LOCAL_HOST } from '../src/constants';
 
 describe('consensus error early exits', () => {
   const baseOpts = {

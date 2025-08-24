@@ -1,5 +1,5 @@
 import { RPCHandler } from '../src';
-import { RpcHandlerOptions } from '../types/handler';
+import { RpcHandlerOptions } from '../';
 
 // NOTE: These tests focus on constructor + config normalization + tracking filter logic.
 // Network calls for latency measurement are NOT executed here to keep tests deterministic.

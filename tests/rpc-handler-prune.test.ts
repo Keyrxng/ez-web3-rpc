@@ -14,7 +14,7 @@ describe('RPCHandler pruning integration', () => {
     jest.doMock('../src/provider/createProvider', () => ({ createProvider: () => ({}) }));
     jest.doMock('../src/provider/retryProxy', () => ({ wrapWithRetry: (base: any) => base }));
 
-    const constants = require('../types/constants');
+    const constants = require('../src/constants');
     // ensure multiple entries pre-prune
     expect(Object.keys(constants.networkIds).length).toBeGreaterThan(1);
 

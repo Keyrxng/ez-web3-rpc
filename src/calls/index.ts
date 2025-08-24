@@ -196,5 +196,3 @@ export class RpcCalls {
 		this.handler._logProxy('warn', 'cooling down provider', { url, strikes, delayMs: delay });
 	}
 }
-
-export type RpcCallsModule = RpcCalls;
