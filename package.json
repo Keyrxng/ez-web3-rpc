@@ -1,5 +1,5 @@
 {
-  "name": "web3-rpcs",
+  "name": "ez-web3-rpcs",
   "version": "0.1.0",
   "description": "Pragmatic RPC tooling for EVM stacks — discover, measure, and wrap JSON-RPC providers with latency-aware selection, retries, and optional consensus helpers.",
   "main": "dist/cjs/index.js",

@@ -1,6 +1,6 @@
-# web3-rpcs — pragmatic RPC tooling for EVM stacks
+# ez-web3-rpcs — pragmatic RPC tooling for EVM stacks
 
-[![providers](https://img.shields.io/badge/Providers-4719-blue)](https://www.npmjs.com/package/web3-rpcs) [![chains](https://img.shields.io/badge/Chains-2332-brightgreen)](https://www.npmjs.com/package/web3-rpcs)
+[![providers](https://img.shields.io/badge/Providers-4719-blue)](https://www.npmjs.com/package/ez-web3-rpcs) [![chains](https://img.shields.io/badge/Chains-2332-brightgreen)](https://www.npmjs.com/package/ez-web3-rpcs)
 
 🚀 Ready out of the box — 4,719 RPC providers across 2,332 chains
 
@@ -21,18 +21,18 @@ What you'll get:
 If that sounds useful, the rest is small glue to make it simple to adopt.
 
 Badges
-[![npm version](https://img.shields.io/npm/v/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
-[![npm downloads](https://img.shields.io/npm/dm/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
-[![license](https://img.shields.io/npm/l/web3-rpcs.svg)](https://www.npmjs.com/package/web3-rpcs)
+[![npm version](https://img.shields.io/npm/v/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
+[![npm downloads](https://img.shields.io/npm/dm/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
+[![license](https://img.shields.io/npm/l/ez-web3-rpcs.svg)](https://www.npmjs.com/package/ez-web3-rpcs)
 
 ## Install
 
 Install like any other npm package:
 
 ```bash
-npm install web3-rpcs
+npm install ez-web3-rpcs
 # or
-yarn add web3-rpcs
+yarn add ez-web3-rpcs
 ```
 
 Requires Node >= 20.10 (uses global fetch & AbortController).
@@ -42,7 +42,7 @@ Requires Node >= 20.10 (uses global fetch & AbortController).
 This shows the minimal path from nothing to an RPC you can call.
 
 ```ts
-import { RPCHandler } from 'web3-rpcs';
+import { RPCHandler } from 'ez-web3-rpcs';
 
 const handler = new RPCHandler({ networkId: '1' });
 await handler.init();
