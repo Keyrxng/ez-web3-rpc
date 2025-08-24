@@ -1,4 +1,5 @@
-import { networkCurrencies, networkExplorers, networkRpcs } from "./src/constants";
+// use type-level references to avoid pulling large runtime values into the root d.ts
+// which can cause transitive value imports of `./dynamic`.
 import { CHAINS_IDS, EXTRA_RPCS } from "./dynamic";
 import { LogLevel } from "./src/logging/logger"
 
@@ -97,9 +98,9 @@ export type HandlerConstructorConfig = {
   };
 };
 
-export type NetworkRPCs = typeof networkRpcs;
-export type NetworkCurrencies = typeof networkCurrencies;
-export type NetworkExplorers = typeof networkExplorers;
+export type NetworkRPCs = typeof import("./src/constants").networkRpcs;
+export type NetworkCurrencies = typeof import("./src/constants").networkCurrencies;
+export type NetworkExplorers = typeof import("./src/constants").networkExplorers;
 
 type NetworkIds<T extends PropertyKey = keyof typeof EXTRA_RPCS> = {
   [K in T]: K extends string ? K : never;
@@ -131,4 +132,4 @@ export type Rpc = {
   isOpenSource?: boolean;
 };
 
-export { CHAINS_IDS, EXTRA_RPCS };
+export { CHAINS_IDS, EXTRA_RPCS } from "./dynamic";
