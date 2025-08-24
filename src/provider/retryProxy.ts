@@ -7,6 +7,7 @@ export interface RetryOptions {
   onLog?: (level: string, msg: string, meta?: any) => void;
   chainId: number;
   rpcCallTimeout: number;      // hard timeout for individual RPC call attempts
+  refresh: () => Promise<void>;
 }
 
 // Wraps user RPC calls in a timeout to handle edgecases post latency testing
@@ -45,7 +46,7 @@ function raceBatch(
   attempt: (url: string) => Promise<any>,
   method: string,
   onLog?: RetryOptions['onLog']
-): Promise<any> {
+) {
   return new Promise((resolve, reject) => {
     let pending = batch.length;
     let lastErr: any;
@@ -112,7 +113,16 @@ export function wrapWithRetry(initialProvider: JsonRpcProvider, opts: RetryOptio
             const batch = ordered.slice(i, i + 3);
             opts.onLog?.('debug', 'Racing batch', { method: String(prop), batch });
             try {
-              return await raceBatch(batch, attempt, String(prop), opts.onLog);
+              const res = await raceBatch(batch, attempt, String(prop), opts.onLog);
+
+              // non-blocking update after a successful call
+              opts.refresh().then(() => {
+                opts.onLog?.('debug', 'Refresh completed', { method: String(prop), rpc: batch[0] });
+              }).catch((err) => {
+                opts.onLog?.('debug', 'Refresh failed', { method: String(prop), error: String(err) });
+              });
+
+              return res;
             } catch (batchErr) {
               const isLastBatch = i + 3 >= ordered.length;
               if (loops === 1 && isLastBatch) {

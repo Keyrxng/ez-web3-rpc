@@ -1,8 +1,8 @@
-import { HandlerConstructorConfig, Tracking, Rpc } from '../../types/handler';
+import { HandlerConstructorConfig, Tracking, Rpc, NetworkId } from '../../types/handler';
 
 export interface NormalizedConfig {
   /** The network ID to use for RPC calls */
-  networkId: string;
+  networkId: NetworkId;
   /** The level of data you are okay with providers tracking  */
   tracking: Tracking;
   /** List of injected RPCs (localhost, anvil, etc)*/
@@ -23,6 +23,8 @@ export interface NormalizedConfig {
     browserLocalStorage: boolean;
     /** Log level for this package including RPC calls. */
     logLevel: string;
+  /** If true, prune dynamic data to only the configured networkId during init */
+  pruneUnusedData: boolean;
   };
 }
 
@@ -40,6 +42,8 @@ export function resolveConfig(config: HandlerConstructorConfig): NormalizedConfi
       rpcCallTimeout: config.proxySettings?.rpcCallTimeout ?? 10000,
       browserLocalStorage: config.settings?.browserLocalStorage ?? false,
       logLevel: config.settings?.logLevel || 'info',
+    /** If true, prune dynamic data to only the configured networkId during init */
+    pruneUnusedData: config.settings?.pruneUnusedData ?? false,
     },
   };
 }

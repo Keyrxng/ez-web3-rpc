@@ -1,3 +1,4 @@
+import { PERMIT2_ADDRESS } from '../../types/constants';
 import { Rpc } from '../../types/handler';
 
 export type LatencyMap = { [url: string]: number; }
@@ -5,7 +6,7 @@ export type LatencyMap = { [url: string]: number; }
 type JsonRpcPayload = { jsonrpc: '2.0'; method: string; params: any[]; id: number };
 
 const blockPayload: JsonRpcPayload = { jsonrpc: '2.0', method: 'eth_getBlockByNumber', params: ['latest', false], id: 1 };
-const codePayload: JsonRpcPayload = { jsonrpc: '2.0', method: 'eth_getCode', params: ['0x000000000022D473030F116dDEE9F6B43aC78BA3', 'latest'], id: 1 };
+const codePayload: JsonRpcPayload = { jsonrpc: '2.0', method: 'eth_getCode', params: [PERMIT2_ADDRESS, 'latest'], id: 1 };
 
 type RpcCheckResult = { url: string; success: boolean; duration: number; blockNumber?: string; bytecodeOk?: boolean; }
 

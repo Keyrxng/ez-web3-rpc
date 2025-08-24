@@ -1,5 +1,5 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { HandlerConstructorConfig, Rpc } from '../types/handler';
+import { Rpc, RpcHandlerOptions, Strategy } from '../types/handler';
 import { resolveConfig, NormalizedConfig } from './config/resolveConfig';
 import { selectBaseRpcSet } from './rpc/selectBaseRpcSet';
 import { getFastest } from './strategy/getFastest';
@@ -8,12 +8,7 @@ import { createProvider } from './provider/createProvider';
 import { wrapWithRetry } from './provider/retryProxy';
 import { Logger, NoopLogger, BasicLogger } from './logging/logger';
 import { RpcCalls } from './calls';
-
-export type Strategy = 'fastest' | 'firstHealthy';
-
-export interface RpcHandlerOptions extends HandlerConstructorConfig {
-    strategy?: Strategy;
-}
+import { pruneDynamicData } from './utils';
 
 /**
  * RPC Handler class for managing JSON-RPC providers.
@@ -25,12 +20,13 @@ export class RPCHandler {
     private latencies: Record<string, number> = {};
     private strategy: Strategy;
     private logger: Logger;
-    public calls: RpcCalls; 
+    public calls: RpcCalls;
 
     constructor(opts: RpcHandlerOptions) {
         this.config = resolveConfig(opts);
         this.strategy = opts.strategy || 'fastest';
-        this.rpcs = selectBaseRpcSet(this.config.networkId, this.config.tracking, this.config.injectedRpcs);
+    // Note: selection of base RPCs happens after optional pruning in init.
+    this.rpcs = selectBaseRpcSet(this.config.networkId, this.config.tracking, this.config.injectedRpcs);
         this.logger = this.config.settings.logLevel === 'none' ? new NoopLogger() : new BasicLogger(this.config.settings.logLevel as any);
         if (this.config.settings.browserLocalStorage && typeof localStorage !== 'undefined') {
             try {
@@ -45,6 +41,17 @@ export class RPCHandler {
     }
 
     async init(): Promise<void> {
+        // If configured to prune dynamic data, do that immediately so all
+        // downstream code (selectBaseRpcSet, type helpers) only see the
+        // data for the configured network.
+        if (this.config.settings.pruneUnusedData) {
+            try {
+                pruneDynamicData(this.config.networkId);
+                this._log('info', 'Pruned dynamic network data to configured networkId', { networkId: this.config.networkId });
+            } catch (e) {
+                this._log('warn', 'Failed to prune dynamic data', { err: e });
+            }
+        }
         if (this.strategy === 'fastest') {
             const { fastest, latencies } = await getFastest(this.rpcs, { timeout: this.config.settings.rpcTimeout });
             if (!fastest) throw new Error('No RPC available');
@@ -64,6 +71,15 @@ export class RPCHandler {
     getProvider(): JsonRpcProvider {
         if (!this.provider) throw new Error('Provider not initialized');
         return this.provider;
+    }
+
+    /**
+     * Helpful for consumers using an alternative Web3 lib
+     * such as Viem, etc.
+     */
+    getProviderUrl(): string {
+        if (!this.provider) throw new Error('Provider not initialized');
+        return this.provider.connection.url;
     }
 
     getLatencies() { return { ...this.latencies }; }
@@ -103,6 +119,7 @@ export class RPCHandler {
             chainId: Number(this.config.networkId),
             rpcCallTimeout: this.config.settings.rpcCallTimeout,
             onLog: (level, msg, meta) => this._log(level as any, msg, meta),
+            refresh: async () => this.refresh()
         });
         return wrapped;
     }

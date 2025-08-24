@@ -1,21 +1,18 @@
-import {
-  NetworkId,
-  NetworkName,
-  HandlerConstructorConfig,
-  NativeToken,
-  NetworkCurrencies,
-  NetworkExplorers,
-  NetworkRPCs,
-} from "./types/handler";
+export * from "./types/handler";
 
 import {
-  LOCAL_HOST,
   networkCurrencies,
   networkExplorers,
   networkIds,
   networkNames,
   networkRpcs,
-  permit2Address,
+  LOCAL_HOST,
+  LOCAL_HOST_2,
+  NETWORK_FAUCETS,
+  PERMIT2_ADDRESS
+} from "./types/constants";
+
+import {
   getNetworkId,
   getNetworkFaucets,
   getNetworkExplorer,
@@ -23,23 +20,11 @@ import {
   getNetworkRpcs,
   getNetworkCurrency,
   getNetworkData,
-} from "./types/constants";
+} from "./src/utils"
 
-export { LOCAL_HOST, networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs, permit2Address };
+export { networkCurrencies, networkExplorers, networkIds, networkNames, networkRpcs,  LOCAL_HOST,
+  LOCAL_HOST_2,
+  NETWORK_FAUCETS,
+  PERMIT2_ADDRESS };
 export { getNetworkId, getNetworkFaucets, getNetworkExplorer, getNetworkName, getNetworkRpcs, getNetworkCurrency, getNetworkData };
-
-
-import { RPCHandler, RpcHandlerOptions } from "./src"
-
-
-export type {
-  NetworkId,
-  NetworkName,
-  HandlerConstructorConfig,
-  NativeToken,
-  NetworkCurrencies,
-  NetworkExplorers,
-  NetworkRPCs,
-};
-
-export { RPCHandler, RpcHandlerOptions };
+export * from "./src"
