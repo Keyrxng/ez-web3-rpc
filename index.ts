@@ -1,9 +1,11 @@
-// use type-level references to avoid pulling large runtime values into the root d.ts
-// which can cause transitive value imports of `./dynamic`.
-import { CHAINS_IDS, EXTRA_RPCS } from "./dynamic";
 import { LogLevel } from "./src/logging/logger"
 
 export * from "./src/index"
+
+export {
+  networkNames,
+  networkIds
+} from "./src/constants";
 
 export type Strategy = 'fastest' | 'firstHealthy';
 
@@ -102,7 +104,7 @@ export type NetworkRPCs = typeof import("./src/constants").networkRpcs;
 export type NetworkCurrencies = typeof import("./src/constants").networkCurrencies;
 export type NetworkExplorers = typeof import("./src/constants").networkExplorers;
 
-type NetworkIds<T extends PropertyKey = keyof typeof EXTRA_RPCS> = {
+type NetworkIds<T extends PropertyKey = keyof typeof import("./dynamic").EXTRA_RPCS> = {
   [K in T]: K extends string ? K : never;
 }[T] | "31337" | "1337";
 
@@ -117,7 +119,7 @@ export type NetworkId = NetworkIds | "31337" | "1337";
  * Unfiltered mapping of all supported blockchain network IDs to their names.
  */
 type ChainsUnfiltered = {
-  -readonly [K in keyof typeof CHAINS_IDS]: (typeof CHAINS_IDS)[K];
+  -readonly [K in keyof typeof import("./dynamic").CHAINS_IDS]: (typeof import("./dynamic").CHAINS_IDS)[K];
 };
 
 // filtered NetworkName union
@@ -131,5 +133,3 @@ export type Rpc = {
   trackingDetails?: string;
   isOpenSource?: boolean;
 };
-
-export { CHAINS_IDS, EXTRA_RPCS } from "./dynamic";
